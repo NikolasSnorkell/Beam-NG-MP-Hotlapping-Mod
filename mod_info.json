@@ -1,0 +1,12 @@
+{
+  "name": "BeamMP Hotlapping",
+  "version": "0.1.0",
+  "description": "Simple hotlapping mod with customizable start/finish line. Set two points on the map to create your finish line and track your lap times.",
+  "author": "NikolasSnorkell",
+  "gameVersion": "0.37",
+  "dependencies": [],
+  "requiredFiles": [
+    "scripts/hotlapping/modScript.lua",
+    "lua/ge/extensions/hotlapping.lua"
+  ]
+}

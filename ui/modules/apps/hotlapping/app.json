@@ -1,0 +1,20 @@
+{
+  "name": "Hotlapping BeamMP",
+  "author": "NikolasSnorkell",
+  "version": "0.1.0",
+  "description": "Simple hotlapping timer with customizable finish line",
+  "directive": "hotlapping_beammp",
+  "domElement": "<hotlapping_beammp-app></hotlapping_beammp-app>",
+  "types": [
+    "ui.apps.categories.gameplay"
+  ],
+  "css": {
+    "left": "20px",
+    "top": "150px",
+    "width": "400px",
+    "height": "auto",
+    "min-width": "350px",
+    "min-height": "400px"
+  },
+  "preserveAspectRatio": false
+}
