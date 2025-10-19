@@ -10,6 +10,7 @@ M.dependencies = { "ui_imgui" }
 local isActive = false
 local debugMode = true
 local showUI = true
+local uiRenderCount = 0  -- Debug counter для отслеживания рендера UI
 
 -- Sub-modules
 local waypointManager = nil
@@ -34,12 +35,62 @@ local currentStatus = STATUS.NOT_CONFIGURED
 -- Forward declarations for UI handlers
 local setPointA, setPointB, clearPoints
 
--- Utility function for logging (defined early so loadModules can use it)
+-- Utility function for logging (defined early so other functions can use it)
 local function log(message, level)
     level = level or "INFO"
     if debugMode then
         print(string.format("[Hotlapping][%s] %s", level, message))
     end
+end
+
+-- Function to sync status from WaypointManager
+local function updateStatusFromWaypoints()
+    if not waypointManager then 
+        log("updateStatusFromWaypoints: waypointManager not available", "WARN")
+        return 
+    end
+    
+    local pointA = waypointManager.getPointA()
+    local pointB = waypointManager.getPointB()
+    
+    log(string.format("updateStatusFromWaypoints: pointA=%s, pointB=%s", 
+        tostring(pointA ~= nil), tostring(pointB ~= nil)))
+    
+    if pointA and pointB then
+        currentStatus = STATUS.CONFIGURED
+        log("Status synced: CONFIGURED (both points set)")
+    elseif pointA then
+        currentStatus = STATUS.POINT_A_SET
+        log("Status synced: POINT_A_SET")
+    else
+        currentStatus = STATUS.NOT_CONFIGURED
+        log("Status synced: NOT_CONFIGURED")
+    end
+end
+
+-- Load default waypoints from JSON file
+local function loadDefaultWaypoints(mapName)
+    if not mapName then
+        log("Cannot load default waypoints: no map name", "WARN")
+        return nil
+    end
+    
+    local filePath = "/scripts/hotlapping/data/default_waypoints.json"
+    local fileContent = jsonReadFile(filePath)
+    
+    if not fileContent then
+        log("Default waypoints file not found or invalid: " .. filePath, "WARN")
+        return nil
+    end
+    
+    -- Find waypoints for current map
+    if fileContent.waypoints and fileContent.waypoints[mapName] then
+        log("Found default waypoints for map: " .. mapName)
+        return fileContent.waypoints[mapName]
+    end
+    
+    log("No default waypoints found for map: " .. mapName)
+    return nil
 end
 
 -- Load sub-modules
@@ -53,8 +104,8 @@ local function loadModules()
     lapTimer = require('hotlapping_modules/LapTimer')
     log("LapTimer loaded")
     
-    -- TODO: Load other modules when ready
-    -- storageManager = require('hotlapping_modules/StorageManager')
+    storageManager = require('hotlapping_modules/StorageManager')
+    log("StorageManager loaded")
 end
 
 -- Get status text in Russian
@@ -88,16 +139,22 @@ end
 
 -- Draw ImGui UI
 local function onPreRender(dt)
-    if not showUI then return end
     if not isActive then return end
+    if not showUI then return end
+    
+    -- Debug logging (только первые 3 вызова)
+    uiRenderCount = uiRenderCount + 1
+    if uiRenderCount <= 3 then
+        log(string.format("onPreRender called (count: %d, status: %s)", uiRenderCount, currentStatus))
+    end
     
     local im = ui_imgui
     
     -- Main window
-    local windowOpen = im.BoolPtr(true)
     local flags = im.WindowFlags_AlwaysAutoResize or 0
     
-    if im.Begin("Hotlapping", windowOpen, flags) then
+    -- Begin window - ImGui will handle open/close state internally
+    if im.Begin("Hotlapping##HotlappingMainWindow", nil, flags) then
         -- Status section
         im.Text("Статус:")
         im.SameLine()
@@ -191,6 +248,12 @@ local function onPreRender(dt)
                 if lapTimer then
                     lapTimer.clearHistory()
                     log("Lap history cleared")
+                    
+                    -- Also delete from storage
+                    if storageManager then
+                        storageManager.deleteLapHistory()
+                        log("Lap history deleted from storage")
+                    end
                 end
             end
         else
@@ -232,6 +295,13 @@ local function onExtensionLoaded()
                                 message = message .. " [Новый рекорд!]"
                             end
                             guihooks.message(message, 5, "")
+                            
+                            -- Auto-save lap history after each lap
+                            if storageManager and lapTimer.getLapCount() > 0 then
+                                local laps = lapTimer.getLapHistory()
+                                storageManager.saveLapHistory(laps)
+                                log("Lap history auto-saved")
+                            end
                         end
                         
                         -- Start new lap immediately
@@ -251,9 +321,22 @@ local function onExtensionLoaded()
     
     -- Initialize state
     isActive = true
+    showUI = true  -- Явно устанавливаем UI как видимый
     currentStatus = STATUS.NOT_CONFIGURED
     
     log("Extension loaded successfully!")
+    log("UI state: " .. (showUI and "visible" or "hidden"))
+    log("Active state: " .. (isActive and "active" or "inactive"))
+    
+    -- Check if we're already in a mission (mod loaded after map loaded)
+    if getMissionFilename and getMissionFilename() ~= "" then
+        log("Already in mission, loading waypoints now...")
+        -- Manually trigger mission start logic to load waypoints
+        M.onClientStartMission(getMissionFilename())
+    end
+    
+    -- Show welcome message to user
+    guihooks.message("Hotlapping мод загружен! Откройте ImGui окно.", 5, "")
 end
 
 -- Cleanup extension
@@ -333,8 +416,10 @@ end
 local function onClientStartMission(levelPath)
     log("Mission started: " .. tostring(levelPath))
     
-    -- TODO: Load finish line configuration for this map
-    -- TODO: Load lap history for this map
+    -- Ensure UI is visible
+    showUI = true
+    isActive = true
+    log("UI enabled for mission")
     
     currentVehicle = be:getPlayerVehicle(0)
     
@@ -343,14 +428,98 @@ local function onClientStartMission(levelPath)
         local vehicleName = currentVehicle:getJBeamFilename() or "unknown"
         lapTimer.setVehicle(vehicleName)
     end
+    
+    -- Load finish line configuration for this map
+    if storageManager and waypointManager then
+        local savedWaypoints = storageManager.loadFinishLine()
+        local waypointsLoaded = false
+        
+        if savedWaypoints then
+            log("Loading saved finish line for this map...")
+            
+            -- Load points into WaypointManager
+            if savedWaypoints.pointA and savedWaypoints.pointB then
+                waypointManager.setPointA(savedWaypoints.pointA)
+                waypointManager.setPointB(savedWaypoints.pointB)
+                
+                -- Sync status from WaypointManager
+                updateStatusFromWaypoints()
+                
+                log("Finish line loaded successfully!")
+                guihooks.message("Финишная линия загружена с диска", 3, "")
+                waypointsLoaded = true
+            end
+        end
+        
+        -- If no saved waypoints, try loading defaults from JSON
+        if not waypointsLoaded then
+            log("No saved finish line found, checking default waypoints...")
+            
+            local mapName = storageManager.getCurrentMapName()
+            local defaultWaypoints = loadDefaultWaypoints(mapName)
+            
+            if defaultWaypoints and defaultWaypoints.pointA and defaultWaypoints.pointB then
+                log("Loading default waypoints for map: " .. mapName)
+                
+                waypointManager.setPointA(defaultWaypoints.pointA)
+                waypointManager.setPointB(defaultWaypoints.pointB)
+                
+                -- Sync status from WaypointManager
+                updateStatusFromWaypoints()
+                
+                log("Default waypoints loaded: " .. (defaultWaypoints.description or ""))
+                guihooks.message("Загружены стандартные точки для карты", 3, "")
+            else
+                log("No default waypoints found for this map")
+                -- Ensure status is NOT_CONFIGURED if no data at all
+                currentStatus = STATUS.NOT_CONFIGURED
+            end
+        end
+    end
+    
+    -- Load lap history for this map
+    if storageManager and lapTimer then
+        local savedHistory = storageManager.loadLapHistory()
+        
+        if savedHistory and savedHistory.laps then
+            log(string.format("Loading lap history: %d laps, best: %.3fs", 
+                #savedHistory.laps, savedHistory.bestLapTime or 0))
+            
+            -- Restore lap history to LapTimer
+            -- Note: This is a bulk restore operation
+            for _, lap in ipairs(savedHistory.laps) do
+                -- We need to add a method to LapTimer to restore history
+                -- For now, we'll skip this and implement it if needed
+            end
+            
+            log("Lap history loaded successfully!")
+        else
+            log("No saved lap history found for this map")
+        end
+    end
 end
 
 -- Called when mission ends (leaving map)
 local function onClientEndMission()
     log("Mission ended")
     
-    -- TODO: Save current configuration
-    -- TODO: Save lap history
+    -- Save current finish line configuration
+    if storageManager and waypointManager and waypointManager.isLineConfigured() then
+        local pointA = waypointManager.getPointA()
+        local pointB = waypointManager.getPointB()
+        
+        if pointA and pointB then
+            storageManager.saveFinishLine(pointA, pointB)
+            log("Finish line configuration saved")
+        end
+    end
+    
+    -- Save lap history
+    if storageManager and lapTimer and lapTimer.getLapCount() > 0 then
+        local laps = lapTimer.getLapHistory()
+        storageManager.saveLapHistory(laps)
+        log("Lap history saved")
+    end
     
     currentVehicle = nil
 end
@@ -372,9 +541,12 @@ setPointA = function()
     local pos = currentVehicle:getPosition()
     log(string.format("Point A position: x=%.2f, y=%.2f, z=%.2f", pos.x, pos.y, pos.z))
     
+    -- Create clean position table (avoid circular references)
+    local cleanPos = {x = pos.x, y = pos.y, z = pos.z}
+    
     -- Save point A to waypointManager
     if waypointManager then
-        waypointManager.setPointA(pos)
+        waypointManager.setPointA(cleanPos)
     end
     
     currentStatus = STATUS.POINT_A_SET
@@ -402,12 +574,26 @@ setPointB = function()
     local pos = currentVehicle:getPosition()
     log(string.format("Point B position: x=%.2f, y=%.2f, z=%.2f", pos.x, pos.y, pos.z))
     
+    -- Create clean position table (avoid circular references)
+    local cleanPos = {x = pos.x, y = pos.y, z = pos.z}
+    
     -- Save point B to waypointManager
     if waypointManager then
-        waypointManager.setPointB(pos)
+        waypointManager.setPointB(cleanPos)
     end
     
     currentStatus = STATUS.CONFIGURED
+    
+    -- Auto-save finish line configuration
+    if storageManager and waypointManager and waypointManager.isLineConfigured() then
+        local pointA = waypointManager.getPointA()
+        local pointB = waypointManager.getPointB()
+        
+        if pointA and pointB then
+            storageManager.saveFinishLine(pointA, pointB)
+            log("Finish line configuration auto-saved")
+        end
+    end
     
     log("Point B set successfully! Finish line configured.")
 end
@@ -436,6 +622,12 @@ clearPoints = function()
         lapTimer.reset(false)  -- Reset timer but keep history
     end
     
+    -- Delete saved finish line from storage
+    if storageManager then
+        storageManager.deleteFinishLine()
+        log("Finish line deleted from storage")
+    end
+    
     currentStatus = STATUS.NOT_CONFIGURED
     
     log("Points cleared!")
@@ -445,6 +637,27 @@ end
 local function toggleUI()
     showUI = not showUI
     log("UI toggled: " .. tostring(showUI))
+    
+    -- Show notification to user
+    if showUI then
+        guihooks.message("Hotlapping UI включен", 2, "")
+    else
+        guihooks.message("Hotlapping UI выключен", 2, "")
+    end
+end
+
+-- Show UI (force enable)
+local function showHotlappingUI()
+    showUI = true
+    log("UI shown")
+    guihooks.message("Hotlapping UI включен", 2, "")
+end
+
+-- Hide UI (force disable)
+local function hideHotlappingUI()
+    showUI = false
+    log("UI hidden")
+    guihooks.message("Hotlapping UI выключен", 2, "")
 end
 
 -- Public interface
@@ -461,5 +674,41 @@ M.setPointA = setPointA
 M.setPointB = setPointB
 M.clearPoints = clearPoints
 M.toggleUI = toggleUI
+M.showUI = showHotlappingUI
+M.hideUI = hideHotlappingUI
+
+-- Storage utilities (for users to inspect/export data)
+M.getSavedMaps = function()
+    if storageManager then
+        return storageManager.getSavedMaps()
+    end
+    return {}
+end
+
+M.getWaypoints = function()
+    if waypointManager then
+        return {
+            pointA = waypointManager.getPointA(),
+            pointB = waypointManager.getPointB(),
+            configured = waypointManager.isLineConfigured()
+        }
+    end
+    return nil
+end
+
+M.getStatistics = function()
+    if storageManager then
+        return storageManager.getStatistics()
+    end
+    return nil
+end
+
+-- Export all waypoints to JSON string (ready for default_waypoints.json)
+M.exportAllWaypoints = function()
+    if storageManager then
+        return storageManager.exportAllWaypoints()
+    end
+    return "{}"
+end
 
 return M

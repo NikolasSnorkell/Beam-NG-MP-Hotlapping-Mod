@@ -80,12 +80,24 @@ end
 
 -- Get Point A
 function M.getPointA()
-    return pointA
+    if not pointA then return nil end
+    -- Return a clean copy to avoid external modifications
+    return {
+        x = pointA.x,
+        y = pointA.y,
+        z = pointA.z
+    }
 end
 
 -- Get Point B
 function M.getPointB()
-    return pointB
+    if not pointB then return nil end
+    -- Return a clean copy to avoid external modifications
+    return {
+        x = pointB.x,
+        y = pointB.y,
+        z = pointB.z
+    }
 end
 
 -- Clear both points
