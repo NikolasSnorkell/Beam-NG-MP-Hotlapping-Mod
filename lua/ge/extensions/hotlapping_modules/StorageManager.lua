@@ -624,6 +624,12 @@ function M.setDebugMode(enabled)
     debugMode = enabled
 end
 
+-- Get current map name (public API)
+---@return string|nil Map name or nil if no mission loaded
+function M.getCurrentMapName()
+    return getCurrentMapName()
+end
+
 -- Get storage statistics
 ---@return table Statistics about stored data
 function M.getStatistics()

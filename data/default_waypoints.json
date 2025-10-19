@@ -2,61 +2,21 @@
   "version": "1.0",
   "description": "Default waypoint configurations for popular maps",
   "waypoints": {
-    "gridmap_v2": {
-      "displayName": "GridMap V2",
-      "pointA": {
-        "x": 0.0,
-        "y": 0.0,
-        "z": 0.0
-      },
+
+    "monza": {
+      "displayName": "monza",
       "pointB": {
-        "x": 10.0,
-        "y": 0.0,
-        "z": 0.0
+        "y": -371.71276855469,
+        "x": -294.65286254883,
+        "z": 196.86814880371
       },
-      "description": "Example finish line at grid center"
-    },
-    "utah": {
-      "displayName": "Utah (USA)",
       "pointA": {
-        "x": 0.0,
-        "y": 0.0,
-        "z": 0.0
+        "y": -368.2942199707,
+        "x": -327.55484008789,
+        "z": 196.96044921875
       },
-      "pointB": {
-        "x": 10.0,
-        "y": 0.0,
-        "z": 0.0
-      },
-      "description": "Example finish line - replace with actual coordinates"
-    },
-    "italy": {
-      "displayName": "Italy",
-      "pointA": {
-        "x": 0.0,
-        "y": 0.0,
-        "z": 0.0
-      },
-      "pointB": {
-        "x": 10.0,
-        "y": 0.0,
-        "z": 0.0
-      },
-      "description": "Example finish line - replace with actual coordinates"
-    },
-    "automation_test_track": {
-      "displayName": "Automation Test Track",
-      "pointA": {
-        "x": 0.0,
-        "y": 0.0,
-        "z": 0.0
-      },
-      "pointB": {
-        "x": 10.0,
-        "y": 0.0,
-        "z": 0.0
-      },
-      "description": "Example finish line - replace with actual coordinates"
+      "description": "Auto-exported from saved waypoints"
     }
+
   }
 }

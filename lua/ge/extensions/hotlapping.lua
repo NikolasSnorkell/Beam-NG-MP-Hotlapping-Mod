@@ -8,7 +8,7 @@ M.dependencies = { "ui_imgui" }
 
 -- Module state
 local isActive = false
-local debugMode = true
+local debugMode = false
 local showUI = true
 local uiRenderCount = 0  -- Debug counter для отслеживания рендера UI
 
@@ -259,6 +259,15 @@ local function onPreRender(dt)
         else
             im.TextColored(im.ImVec4(0.5, 0.5, 0.5, 1), "Нет завершенных кругов")
         end
+        
+        im.Separator()
+        
+        -- Debug section
+        local debugPtr = im.BoolPtr(debugMode)
+        if im.Checkbox("Debug визуализация", debugPtr) then
+            debugMode = debugPtr[0]
+            log("Debug mode toggled: " .. tostring(debugMode))
+        end
     end
     
     -- ВАЖНО: End() всегда вызывается после Begin(), даже если Begin вернул false
@@ -362,8 +371,8 @@ local function onUpdate(dt)
         end
     end
     
-    -- Draw waypoint visualization
-    if waypointManager then
+    -- Draw waypoint visualization (only in debug mode)
+    if waypointManager and debugMode then
         waypointManager.drawVisualization()
     end
     
@@ -709,6 +718,16 @@ M.exportAllWaypoints = function()
         return storageManager.exportAllWaypoints()
     end
     return "{}"
+end
+
+-- Debug mode control
+M.setDebugMode = function(enabled)
+    debugMode = enabled
+    log("Debug mode set to: " .. tostring(enabled))
+end
+
+M.getDebugMode = function()
+    return debugMode
 end
 
 return M
