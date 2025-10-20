@@ -1,0 +1,60 @@
+<div class="bngApp hotlappingApp" style="width: 100%; height: 100%;">
+    <link href="/ui/modules/apps/hotlapping/app.css" rel="stylesheet">
+    <link href="app.css" rel="stylesheet">
+    
+    <div class="hotlapping-container"
+        <!-- Header -->
+        <div class="header">
+            <h2 class="title">Hotlapping</h2>
+            <button class="btn-close" ng-click="closeApp()">×</button>
+        </div>
+        
+        <!-- Status Section -->
+        <div class="status-section">
+            <div class="status-label">Статус:</div>
+            <div id="statusText" class="status-text" ng-class="statusClass">{{statusText}}</div>
+        </div>
+        
+        <!-- Control Buttons -->
+        <div class="controls-section">
+            <button id="btnPointA" class="btn btn-primary" ng-click="setPointA()">
+                <span class="btn-icon">A</span>
+                <span class="btn-text">Установить точку А</span>
+            </button>
+            
+            <button id="btnPointB" class="btn btn-primary" ng-click="setPointB()" ng-disabled="!canSetPointB">
+                <span class="btn-icon">B</span>
+                <span class="btn-text">Установить точку Б</span>
+            </button>
+            
+            <button id="btnClear" class="btn btn-secondary" ng-click="clearPoints()" ng-disabled="!canClear">
+                <span class="btn-text">Очистить точки</span>
+            </button>
+        </div>
+        
+        <!-- Timer Section (placeholder for future) -->
+        <div class="timer-section">
+            <div class="current-time">
+                <div class="time-label">Текущий круг</div>
+                <div id="currentTime" class="time-value">{{currentTime}}</div>
+            </div>
+            
+            <div class="best-time">
+                <div class="time-label">Лучший круг</div>
+                <div id="bestTime" class="time-value">{{bestTime}}</div>
+            </div>
+        </div>
+        
+        <!-- Lap History (placeholder for future) -->
+        <div class="history-section">
+            <div class="history-header">История кругов</div>
+            <div id="lapHistory" class="history-list">
+                <div class="history-empty" ng-if="laps.length === 0">Нет завершенных кругов</div>
+                <div class="history-item" ng-repeat="lap in laps" ng-class="{'best': lap.isBest}">
+                    <span class="lap-number">#{{lap.number}}</span>
+                    <span class="lap-time">{{lap.time}}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

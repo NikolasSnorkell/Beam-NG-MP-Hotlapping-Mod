@@ -1,0 +1,22 @@
+{
+  "version": "1.0",
+  "description": "Default waypoint configurations for popular maps",
+  "waypoints": {
+
+    "monza": {
+      "displayName": "monza",
+      "pointB": {
+        "y": -371.71276855469,
+        "x": -294.65286254883,
+        "z": 196.86814880371
+      },
+      "pointA": {
+        "y": -368.2942199707,
+        "x": -327.55484008789,
+        "z": 196.96044921875
+      },
+      "description": "Auto-exported from saved waypoints"
+    }
+
+  }
+}
