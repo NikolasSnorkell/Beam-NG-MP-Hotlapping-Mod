@@ -43,6 +43,30 @@ local function log(message, level)
     end
 end
 
+-- Helper function to check if vehicle belongs to local player (multiplayer-safe)
+local function isMyVehicle(vehicleId)
+    if not vehicleId then 
+        log("isMyVehicle: vehicleId is nil", "DEBUG")
+        return false 
+    end
+    
+    local myVehicle = be:getPlayerVehicle(0)
+    if not myVehicle then 
+        log("isMyVehicle: no player vehicle found", "DEBUG")
+        return false 
+    end
+    
+    local myVehicleId = myVehicle:getID()
+    local isMine = (myVehicleId == vehicleId)
+    
+    if debugMode then
+        log(string.format("isMyVehicle check: vehicleId=%s, myVehicleId=%s, isMine=%s", 
+            tostring(vehicleId), tostring(myVehicleId), tostring(isMine)), "DEBUG")
+    end
+    
+    return isMine
+end
+
 -- Function to sync status from WaypointManager
 local function updateStatusFromWaypoints()
     if not waypointManager then 
@@ -397,7 +421,15 @@ end
 
 -- Handle vehicle switch
 local function onVehicleSwitched(oldId, newId, player)
-    log(string.format("Vehicle switched from %s to %s", tostring(oldId), tostring(newId)))
+    log(string.format("Vehicle switched event: %s → %s", tostring(oldId), tostring(newId)))
+    
+    -- Check if this is our vehicle (multiplayer-safe)
+    if not isMyVehicle(newId) then
+        log(string.format("Vehicle switch ignored: not my vehicle (%s)", tostring(newId)), "DEBUG")
+        return
+    end
+    
+    log(string.format("My vehicle switched from %s to %s", tostring(oldId), tostring(newId)))
     currentVehicle = be:getPlayerVehicle(0)
     
     -- Reset crossing detector state to avoid false detections
@@ -418,6 +450,32 @@ local function onVehicleSwitched(oldId, newId, player)
             local vehicleName = currentVehicle:getJBeamFilename() or "unknown"
             lapTimer.setVehicle(vehicleName)
         end
+    end
+end
+
+-- Handle vehicle reset (Ctrl+R or similar)
+local function onVehicleResetted(vehicleId)
+    log(string.format("Vehicle reset event: %s", tostring(vehicleId)))
+    
+    -- Check if this is our vehicle (multiplayer-safe)
+    if not isMyVehicle(vehicleId) then
+        log(string.format("Vehicle reset ignored: not my vehicle (%s)", tostring(vehicleId)), "DEBUG")
+        return
+    end
+    
+    log(string.format("My vehicle resetted: %s", tostring(vehicleId)))
+    
+    -- Abort current lap if running
+    if lapTimer and lapTimer.isRunning() then
+        lapTimer.stopLap()
+        log("Current lap aborted due to vehicle reset")
+        guihooks.message("Круг прерван: машина сброшена", 3, "")
+    end
+    
+    -- Reset crossing detector to prevent false detections after reset
+    if crossingDetector then
+        crossingDetector.reset()
+        log("CrossingDetector state reset after vehicle reset")
     end
 end
 
@@ -511,6 +569,12 @@ end
 -- Called when mission ends (leaving map)
 local function onClientEndMission()
     log("Mission ended")
+    
+    -- Stop running lap before saving
+    if lapTimer and lapTimer.isRunning() then
+        lapTimer.stopLap()
+        log("Current lap aborted due to mission end")
+    end
     
     -- Save current finish line configuration
     if storageManager and waypointManager and waypointManager.isLineConfigured() then
@@ -675,6 +739,7 @@ M.onExtensionUnloaded = onExtensionUnloaded
 M.onUpdate = onUpdate
 M.onPreRender = onPreRender  -- Changed from onEditorGui to onPreRender
 M.onVehicleSwitched = onVehicleSwitched
+M.onVehicleResetted = onVehicleResetted
 M.onClientStartMission = onClientStartMission
 M.onClientEndMission = onClientEndMission
 
