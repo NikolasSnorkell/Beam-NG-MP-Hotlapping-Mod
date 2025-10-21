@@ -80,13 +80,9 @@ function M.requestLeaderboardFromServer(mapName)
         return false
     end
     
-    local message = {
-        event = "hotlapping_request_leaderboard",
-        mapName = mapName
-    }
     
-    -- TODO: Implement actual server communication
-    -- TriggerServerEvent("HotlappingEvent", jsonEncode(message))
+    
+    TriggerServerEvent("onRequestDataForPlayer", mapName)
     log(string.format("Would request leaderboard from server for map: %s", mapName), "DEBUG")
     
     return true

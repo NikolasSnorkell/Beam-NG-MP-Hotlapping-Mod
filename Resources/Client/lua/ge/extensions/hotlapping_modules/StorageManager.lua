@@ -12,7 +12,7 @@ local LAP_HISTORY_KEY = SETTINGS_PREFIX .. "lap_history"
 local SETTINGS_KEY = SETTINGS_PREFIX .. "settings"
 
 -- Storage limits
-local MAX_LAP_HISTORY_PER_MAP = 100  -- Maximum number of laps to keep per map
+local MAX_LAP_HISTORY_PER_MAP = 100 -- Maximum number of laps to keep per map
 
 local debugMode = true
 
@@ -25,21 +25,21 @@ local function log(message, level)
 end
 
 -- Safe JSON decoder wrapper for BeamNG's built-in jsonDecode
-local function safeJsonDecode(str)
+function M.safeJsonDecode(str)
     if not str or str == "" then
         return nil
     end
-    
+
     -- BeamNG имеет встроенную глобальную функцию jsonDecode
     -- Оборачиваем в pcall для безопасности
     local success, result = pcall(function()
         return jsonDecode(str)
     end)
-    
+
     if success and result then
         return result
     end
-    
+
     log("Failed to decode JSON: " .. tostring(result), "ERROR")
     if debugMode and str then
         log("Attempted to decode: " .. str:sub(1, 100) .. "...", "DEBUG")
@@ -52,17 +52,17 @@ local function safeJsonEncode(data)
     if data == nil then
         return "null"
     end
-    
+
     -- BeamNG имеет встроенную глобальную функцию jsonEncode
     -- Она уже защищена от циклических ссылок
     local success, result = pcall(function()
         return jsonEncode(data)
     end)
-    
+
     if success and result then
         return result
     end
-    
+
     log("Failed to encode JSON: " .. tostring(result), "ERROR")
     return nil
 end
@@ -71,21 +71,21 @@ end
 local function getCurrentMapName()
     -- Get the level path and extract map name
     local levelPath = getMissionFilename()
-    
+
     if not levelPath or levelPath == "" then
         log("No mission loaded, cannot get map name", "WARN")
         return nil
     end
-    
+
     -- Extract map name from path
     -- Example: "levels/west_coast_usa/main.level.json" -> "west_coast_usa"
     local mapName = levelPath:match("levels/([^/]+)/")
-    
+
     if not mapName then
         log("Could not extract map name from: " .. tostring(levelPath), "WARN")
         return "unknown"
     end
-    
+
     log("Current map: " .. mapName)
     return mapName
 end
@@ -93,19 +93,19 @@ end
 -- Load all waypoints data from storage
 local function loadAllWaypoints()
     local dataStr = settings.getValue(WAYPOINTS_KEY)
-    
+
     if not dataStr or dataStr == "" then
         log("No waypoints data found in storage")
         return {}
     end
-    
-    local data = safeJsonDecode(dataStr)
-    
+
+    local data = M.safeJsonDecode(dataStr)
+
     if not data then
         log("Failed to parse waypoints data", "ERROR")
         return {}
     end
-    
+
     log(string.format("Loaded waypoints for %d maps", table.getn(data) or 0))
     return data
 end
@@ -118,24 +118,24 @@ local function saveAllWaypoints(data)
         for mapName, waypoints in pairs(data) do
             log(string.format("Map: %s", mapName))
             if waypoints.pointA then
-                log(string.format("  pointA: x=%.2f, y=%.2f, z=%.2f", 
+                log(string.format("  pointA: x=%.2f, y=%.2f, z=%.2f",
                     waypoints.pointA.x or 0, waypoints.pointA.y or 0, waypoints.pointA.z or 0))
             end
             if waypoints.pointB then
-                log(string.format("  pointB: x=%.2f, y=%.2f, z=%.2f", 
+                log(string.format("  pointB: x=%.2f, y=%.2f, z=%.2f",
                     waypoints.pointB.x or 0, waypoints.pointB.y or 0, waypoints.pointB.z or 0))
             end
         end
     end
-    
+
     -- Try to encode with error handling
     local dataStr = safeJsonEncode(data)
-    
+
     if not dataStr then
         log("Failed to encode waypoints data", "ERROR")
         return false
     end
-    
+
     settings.setValue(WAYPOINTS_KEY, dataStr)
     log("Waypoints data saved to storage")
     return true
@@ -144,19 +144,19 @@ end
 -- Load all lap history data from storage
 local function loadAllLapHistory()
     local dataStr = settings.getValue(LAP_HISTORY_KEY)
-    
+
     if not dataStr or dataStr == "" then
         log("No lap history data found in storage")
         return {}
     end
-    
-    local data = safeJsonDecode(dataStr)
-    
+
+    local data = M.safeJsonDecode(dataStr)
+
     if not data then
         log("Failed to parse lap history data", "ERROR")
         return {}
     end
-    
+
     log(string.format("Loaded lap history for %d maps", table.getn(data) or 0))
     return data
 end
@@ -165,12 +165,12 @@ end
 local function saveAllLapHistory(data)
     -- Try to encode with error handling
     local dataStr = safeJsonEncode(data)
-    
+
     if not dataStr then
         log("Failed to encode lap history data", "ERROR")
         return false
     end
-    
+
     settings.setValue(LAP_HISTORY_KEY, dataStr)
     log("Lap history data saved to storage")
     return true
@@ -183,20 +183,20 @@ end
 ---@return boolean Success status
 function M.saveFinishLine(pointA, pointB, mapName)
     mapName = mapName or getCurrentMapName()
-    
+
     if not mapName then
         log("Cannot save finish line: no map name", "ERROR")
         return false
     end
-    
+
     if not pointA or not pointB then
         log("Cannot save finish line: missing points", "ERROR")
         return false
     end
-    
+
     -- Load all waypoints
     local allWaypoints = loadAllWaypoints()
-    
+
     -- Save waypoints for this map
     allWaypoints[mapName] = {
         pointA = {
@@ -211,14 +211,14 @@ function M.saveFinishLine(pointA, pointB, mapName)
         },
         savedAt = os.date("%Y-%m-%d %H:%M:%S")
     }
-    
+
     -- Save back to storage
     local success = saveAllWaypoints(allWaypoints)
-    
+
     if success then
         log(string.format("Finish line saved for map: %s", mapName))
     end
-    
+
     return success
 end
 
@@ -227,26 +227,29 @@ end
 ---@return table|nil Waypoints data {pointA, pointB} or nil if not found
 function M.loadFinishLine(mapName)
     mapName = mapName or getCurrentMapName()
-    
+
     if not mapName then
         log("Cannot load finish line: no map name", "ERROR")
         return nil
     end
-    
+
     -- Load all waypoints
     local allWaypoints = loadAllWaypoints()
-    
+    if not allWaypoints then
+        log(string.format("No waypoints found in storage"), "ERROR")
+        return nil
+    end
     -- Get waypoints for this map
     local waypoints = allWaypoints[mapName]
-    
+
     if not waypoints then
         log(string.format("No finish line found for map: %s", mapName))
         return nil
     end
-    
-    log(string.format("Finish line loaded for map: %s (saved at: %s)", 
+
+    log(string.format("Finish line loaded for map: %s (saved at: %s)",
         mapName, waypoints.savedAt or "unknown"))
-    
+
     return {
         pointA = waypoints.pointA,
         pointB = waypoints.pointB
@@ -258,25 +261,25 @@ end
 ---@return boolean Success status
 function M.deleteFinishLine(mapName)
     mapName = mapName or getCurrentMapName()
-    
+
     if not mapName then
         log("Cannot delete finish line: no map name", "ERROR")
         return false
     end
-    
+
     -- Load all waypoints
     local allWaypoints = loadAllWaypoints()
-    
+
     -- Remove waypoints for this map
     allWaypoints[mapName] = nil
-    
+
     -- Save back to storage
     local success = saveAllWaypoints(allWaypoints)
-    
+
     if success then
         log(string.format("Finish line deleted for map: %s", mapName))
     end
-    
+
     return success
 end
 
@@ -286,28 +289,28 @@ end
 ---@return boolean Success status
 function M.saveLapHistory(laps, mapName)
     mapName = mapName or getCurrentMapName()
-    
+
     if not mapName then
         log("Cannot save lap history: no map name", "ERROR")
         return false
     end
-    
+
     if not laps or type(laps) ~= "table" then
         log("Cannot save lap history: invalid laps data", "ERROR")
         return false
     end
-    
+
     -- Load all lap history
     local allHistory = loadAllLapHistory()
-    
+
     -- Limit number of laps stored
     local lapsToSave = {}
     local startIdx = math.max(1, #laps - MAX_LAP_HISTORY_PER_MAP + 1)
-    
+
     for i = startIdx, #laps do
         table.insert(lapsToSave, laps[i])
     end
-    
+
     -- Calculate best lap
     local bestLapTime = nil
     for _, lap in ipairs(laps) do
@@ -315,7 +318,7 @@ function M.saveLapHistory(laps, mapName)
             bestLapTime = lap.time
         end
     end
-    
+
     -- Save history for this map
     allHistory[mapName] = {
         laps = lapsToSave,
@@ -323,15 +326,15 @@ function M.saveLapHistory(laps, mapName)
         totalLaps = #laps,
         savedAt = os.date("%Y-%m-%d %H:%M:%S")
     }
-    
+
     -- Save back to storage
     local success = saveAllLapHistory(allHistory)
-    
+
     if success then
-        log(string.format("Lap history saved for map: %s (%d laps, best: %.3fs)", 
+        log(string.format("Lap history saved for map: %s (%d laps, best: %.3fs)",
             mapName, #lapsToSave, bestLapTime or 0))
     end
-    
+
     return success
 end
 
@@ -340,26 +343,26 @@ end
 ---@return table|nil Lap history data {laps, bestLapTime, totalLaps} or nil if not found
 function M.loadLapHistory(mapName)
     mapName = mapName or getCurrentMapName()
-    
+
     if not mapName then
         log("Cannot load lap history: no map name", "ERROR")
         return nil
     end
-    
+
     -- Load all lap history
     local allHistory = loadAllLapHistory()
-    
+
     -- Get history for this map
     local history = allHistory[mapName]
-    
+
     if not history then
         log(string.format("No lap history found for map: %s", mapName))
         return nil
     end
-    
-    log(string.format("Lap history loaded for map: %s (%d laps, best: %.3fs)", 
+
+    log(string.format("Lap history loaded for map: %s (%d laps, best: %.3fs)",
         mapName, #(history.laps or {}), history.bestLapTime or 0))
-    
+
     return history
 end
 
@@ -368,25 +371,25 @@ end
 ---@return boolean Success status
 function M.deleteLapHistory(mapName)
     mapName = mapName or getCurrentMapName()
-    
+
     if not mapName then
         log("Cannot delete lap history: no map name", "ERROR")
         return false
     end
-    
+
     -- Load all lap history
     local allHistory = loadAllLapHistory()
-    
+
     -- Remove history for this map
     allHistory[mapName] = nil
-    
+
     -- Save back to storage
     local success = saveAllLapHistory(allHistory)
-    
+
     if success then
         log(string.format("Lap history deleted for map: %s", mapName))
     end
-    
+
     return success
 end
 
@@ -395,10 +398,10 @@ end
 function M.getSavedMaps()
     local allWaypoints = loadAllWaypoints()
     local allHistory = loadAllLapHistory()
-    
+
     local maps = {}
     local mapSet = {}
-    
+
     -- Add maps with waypoints
     for mapName, _ in pairs(allWaypoints) do
         if not mapSet[mapName] then
@@ -406,7 +409,7 @@ function M.getSavedMaps()
             mapSet[mapName] = true
         end
     end
-    
+
     -- Add maps with lap history
     for mapName, _ in pairs(allHistory) do
         if not mapSet[mapName] then
@@ -414,9 +417,9 @@ function M.getSavedMaps()
             mapSet[mapName] = true
         end
     end
-    
+
     table.sort(maps)
-    
+
     log(string.format("Found %d maps with saved data", #maps))
     return maps
 end
@@ -427,23 +430,23 @@ end
 ---@return boolean Success status
 function M.exportLapHistory(mapName, filePath)
     mapName = mapName or getCurrentMapName()
-    
+
     if not mapName then
         log("Cannot export lap history: no map name", "ERROR")
         return false
     end
-    
+
     -- Load history for this map
     local history = M.loadLapHistory(mapName)
-    
+
     if not history then
         log("No lap history to export", "WARN")
         return false
     end
-    
+
     -- Generate default file path if not provided
     filePath = filePath or string.format("/hotlapping_export_%s.json", mapName)
-    
+
     -- Prepare export data
     local exportData = {
         map = mapName,
@@ -452,25 +455,25 @@ function M.exportLapHistory(mapName, filePath)
         bestLapTime = history.bestLapTime,
         laps = history.laps
     }
-    
+
     -- Encode to JSON
     local jsonData = safeJsonEncode(exportData)
-    
+
     if not jsonData then
         log("Failed to encode export data", "ERROR")
         return false
     end
-    
+
     -- Write to file
     local file = io.open(filePath, "w")
     if not file then
         log(string.format("Failed to open file for writing: %s", filePath), "ERROR")
         return false
     end
-    
+
     file:write(jsonData)
     file:close()
-    
+
     log(string.format("Lap history exported to: %s", filePath))
     return true
 end
@@ -481,37 +484,37 @@ end
 ---@return boolean Success status
 function M.importLapHistory(filePath, mapName)
     mapName = mapName or getCurrentMapName()
-    
+
     if not mapName then
         log("Cannot import lap history: no map name", "ERROR")
         return false
     end
-    
+
     -- Read file
     local file = io.open(filePath, "r")
     if not file then
         log(string.format("Failed to open file for reading: %s", filePath), "ERROR")
         return false
     end
-    
+
     local jsonData = file:read("*all")
     file:close()
-    
+
     -- Decode JSON
-    local importData = safeJsonDecode(jsonData)
-    
+    local importData = M.safeJsonDecode(jsonData)
+
     if not importData or not importData.laps then
         log("Invalid import data", "ERROR")
         return false
     end
-    
+
     -- Save imported history
     local success = M.saveLapHistory(importData.laps, mapName)
-    
+
     if success then
         log(string.format("Lap history imported from: %s (%d laps)", filePath, #importData.laps))
     end
-    
+
     return success
 end
 
@@ -523,14 +526,14 @@ function M.saveSettings(settingsData)
         log("Cannot save settings: invalid data", "ERROR")
         return false
     end
-    
+
     local dataStr = safeJsonEncode(settingsData)
-    
+
     if not dataStr then
         log("Failed to encode settings data", "ERROR")
         return false
     end
-    
+
     settings.setValue(SETTINGS_KEY, dataStr)
     log("Mod settings saved")
     return true
@@ -540,19 +543,19 @@ end
 ---@return table|nil Settings data or nil if not found
 function M.loadSettings()
     local dataStr = settings.getValue(SETTINGS_KEY)
-    
+
     if not dataStr or dataStr == "" then
         log("No settings data found")
         return nil
     end
-    
-    local data = safeJsonDecode(dataStr)
-    
+
+    local data = M.safeJsonDecode(dataStr)
+
     if not data then
         log("Failed to parse settings data", "ERROR")
         return nil
     end
-    
+
     log("Mod settings loaded")
     return data
 end
@@ -563,7 +566,7 @@ function M.clearAllData()
     settings.setValue(WAYPOINTS_KEY, "")
     settings.setValue(LAP_HISTORY_KEY, "")
     settings.setValue(SETTINGS_KEY, "")
-    
+
     log("All stored data cleared")
     return true
 end
@@ -572,27 +575,27 @@ end
 ---@return string JSON string with all waypoints
 function M.exportAllWaypoints()
     local allWaypoints = loadAllWaypoints()
-    
+
     local exportData = {
         version = "1.0",
         description = "Exported waypoint configurations",
         waypoints = {}
     }
-    
+
     local mapCount = 0
     for mapName, waypoints in pairs(allWaypoints) do
         exportData.waypoints[mapName] = {
-            displayName = mapName,  -- Можно заменить на человекочитаемое имя
+            displayName = mapName, -- Можно заменить на человекочитаемое имя
             pointA = waypoints.pointA,
             pointB = waypoints.pointB,
             description = "Auto-exported from saved waypoints"
         }
         mapCount = mapCount + 1
     end
-    
+
     local jsonData = safeJsonEncode(exportData)
     log(string.format("Exported waypoints for %d maps", mapCount))
-    
+
     return jsonData or ""
 end
 
@@ -601,19 +604,19 @@ end
 ---@return boolean Success status
 function M.exportAllWaypointsToFile(filePath)
     filePath = filePath or "/temp/exported_waypoints.json"
-    
+
     local jsonData = M.exportAllWaypoints()
-    
+
     -- Write to file
     local file = io.open(filePath, "w")
     if not file then
         log(string.format("Failed to open file for writing: %s", filePath), "ERROR")
         return false
     end
-    
+
     file:write(jsonData)
     file:close()
-    
+
     log(string.format("All waypoints exported to: %s", filePath))
     return true
 end
@@ -635,20 +638,20 @@ end
 function M.getStatistics()
     local allWaypoints = loadAllWaypoints()
     local allHistory = loadAllLapHistory()
-    
+
     local waypointCount = 0
     local historyCount = 0
     local totalLaps = 0
-    
+
     for _, _ in pairs(allWaypoints) do
         waypointCount = waypointCount + 1
     end
-    
+
     for _, history in pairs(allHistory) do
         historyCount = historyCount + 1
         totalLaps = totalLaps + (history.totalLaps or 0)
     end
-    
+
     return {
         mapsWithWaypoints = waypointCount,
         mapsWithHistory = historyCount,
