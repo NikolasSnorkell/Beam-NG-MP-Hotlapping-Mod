@@ -68,7 +68,7 @@ end
 -- Get current timestamp as string
 ---@return string Timestamp in format "YYYY-MM-DD HH:MM:SS"
 local function getTimestamp()
-    return os.date("%Y-%m-%d %H:%M:%S")
+    return tostring(os.date("%Y-%m-%d %H:%M:%S"))
 end
 
 -- Start a new lap
@@ -361,7 +361,7 @@ function M.getStatistics()
         bestTime = bestLapTime,
         averageTime = averageTime,
         totalTime = totalTime,
-        bestTimeFormatted = formatTime(bestLapTime),
+        bestTimeFormatted = formatTime(bestLapTime or 0),
         averageTimeFormatted = formatTime(averageTime),
         totalTimeFormatted = formatTime(totalTime)
     }
@@ -383,6 +383,14 @@ end
 ---@param enabled boolean Enable or disable debug logging
 function M.setDebugMode(enabled)
     debugMode = enabled
+end
+
+-- Update function for timer
+---@param dt number Delta time in seconds
+function M.update(dt)
+    if currentState == TimerState.RUNNING then
+        currentLapTime = (os.clock() - lapStartTime)
+    end
 end
 
 -- Export format time function for external use

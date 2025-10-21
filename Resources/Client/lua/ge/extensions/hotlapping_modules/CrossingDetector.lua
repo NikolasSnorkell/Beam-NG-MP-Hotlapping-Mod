@@ -9,7 +9,7 @@ local M = {}
 local previousFront = nil
 local previousBack = nil
 local previousCenter = nil  -- Store previous center position for direction calculation
-local debugMode = true
+local debugMode = false
 
 -- Cooldown to prevent multiple detections during single crossing
 local lastCrossingTime = 0

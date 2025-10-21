@@ -19,7 +19,7 @@ local VISUAL_CONFIG = {
     heightOffset = 0.5,            -- Height offset for visual line (опущен с 2.0 до 0.5м над землей)
 }
 
-local debugMode = true
+local debugMode = false
 
 -- Utility function for logging
 local function log(message, level)
