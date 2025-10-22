@@ -233,7 +233,10 @@ end
 --     saveData()
 -- end
 
-function updateLapsInStorage(playerName, lapTime, vehicle, lapNumber)
+function updateLapsInStorage(playerId, lapTime, vehicle, lapNumber)
+
+    local playerName = MP.GetPlayerName(playerId)
+
     print('[Hotlapping] Updating lap for: ' .. playerName .. 
           ' Time: ' .. lapTime .. ' Vehicle: ' .. vehicle)
     
@@ -283,7 +286,8 @@ function hotlappingRequestHubFunc(playerId, data)
         sendLapsToPlayer(playerId)
     elseif data.event == "hotlapping_lap_time" then
         print('[Hotlapping] Processing lap time submission from player ID: ' .. playerId)
-        updateLapsInStorage(data.playerName, data.time, data.vehicle)
+         
+        updateLapsInStorage(playerId, data.time, data.vehicle)
            -- Рассылаем обновление ВСЕМ игрокам
         broadcastLeaderboardUpdate()
     end

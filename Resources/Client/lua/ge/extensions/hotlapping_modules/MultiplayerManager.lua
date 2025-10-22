@@ -40,8 +40,10 @@ end
 
 -- Player information functions
 function M.getLocalPlayerName()
-    if M.isInMP() and MP and type(MP.GetPlayerName) == "function" then
-        return MP.GetPlayerName(MP.GetPlayerServerID())
+    -- local name = MP.GetPlayerName(MP.GetPlayerServerID())
+
+    if name and name ~= "" then
+        return name
     else
         -- Fallback для одиночной игры
         return "LocalPlayer"
@@ -60,7 +62,7 @@ function M.sendLapTimeToServer(time, vehicle, isNewBest, mapName, lapNumber)
     
     log("In multiplayer mode, preparing message...")
     
-    local playerName = M.getLocalPlayerName()
+    local playerName = 'LocalPlayer'
     log("Player name: " .. tostring(playerName))
     
     local message = {

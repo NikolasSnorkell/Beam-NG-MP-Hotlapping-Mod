@@ -46,6 +46,11 @@ local function isMyVehicle(vehicleId)
     return (myVehicleId == vehicleId)
 end
 
+  function script_path()
+        local str = debug.getinfo(2, "S").source:sub(2)
+        return str:match("(.*/)") or "./"
+    end
+
 -- Load all sub-modules
 local function loadModules()
     log("Loading sub-modules...")
@@ -70,6 +75,10 @@ local function loadModules()
 
     uiManager = require('hotlapping_modules/UIManager')
     log("UIManager loaded")
+
+  
+
+    print(script_path())
 
     -- Setup dependencies for UIManager
     uiManager.setDependencies({
@@ -188,9 +197,9 @@ end
 
 -- Setup lap completion callback for multiplayer integration
 local function setupLapCompletedCallback()
-    if not lapTimer then 
+    if not lapTimer then
         log("setupLapCompletedCallback: lapTimer is nil!", "ERROR")
-        return 
+        return
     end
 
     log("Setting up lap completed callback...")
@@ -211,7 +220,7 @@ local function setupLapCompletedCallback()
         end
 
         log("Managers available, preparing to send...")
-        
+
         local mapName = storageManager and storageManager.getCurrentMapName() or "unknown"
         log(string.format("Map name: %s", mapName))
 
@@ -224,16 +233,16 @@ local function setupLapCompletedCallback()
             mapName,
             lapRecord.lapNumber
         )
-        
+
         if success then
             log("Lap time sent successfully!", "INFO")
         else
             log("Failed to send lap time", "ERROR")
         end
-        
+
         log("========== LAP CALLBACK FINISHED ==========", "INFO")
     end)
-    
+
     log("Lap completed callback set successfully!")
 end
 
