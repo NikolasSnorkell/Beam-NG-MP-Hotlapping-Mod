@@ -63,11 +63,11 @@ function M.sendLapTimeToServer(time, vehicle, isNewBest, mapName)
         time = time,
         vehicle = vehicle,
         isNewBest = isNewBest,
-        timestamp = os.date("%Y-%m-%d %H:%M:%S")
+        -- timestamp = os.date("%Y-%m-%d %H:%M:%S")
     }
     
     -- TODO: Implement actual server communication
-    -- TriggerServerEvent("HotlappingEvent", jsonEncode(message))
+    TriggerServerEvent("onHotlappingEvent", jsonEncode(message))
     log(string.format("Would send to server: %s completed lap %.3fs (best: %s) on %s", 
         playerName, time, tostring(isNewBest), mapName), "DEBUG")
     
@@ -80,10 +80,13 @@ function M.requestLeaderboardFromServer(mapName)
         return false
     end
     
+    local message = {
+        event = "hotlapping_request_leaderboard",
+        mapName = mapName
+    }
     
-    
-    TriggerServerEvent("onRequestDataForPlayer", mapName)
-    log(string.format("Would request leaderboard from server for map: %s", mapName), "DEBUG")
+    TriggerServerEvent("onRequestDataForPlayer", jsonEncode(message))
+    log(string.format("Would request leaderboard from server for map: %s", message.mapName), "DEBUG")
     
     return true
 end

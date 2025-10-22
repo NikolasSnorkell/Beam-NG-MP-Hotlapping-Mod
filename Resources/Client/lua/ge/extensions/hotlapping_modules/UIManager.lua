@@ -59,27 +59,27 @@ end
 -- Get status color based on current status
 local function getStatusColor()
     if currentStatus == STATUS.NOT_CONFIGURED then
-        return {0.8, 0.8, 0.8, 1}  -- Gray
+        return { 0.8, 0.8, 0.8, 1 } -- Gray
     elseif currentStatus == STATUS.POINT_A_SET then
-        return {1, 0.8, 0, 1}      -- Orange
+        return { 1, 0.8, 0, 1 }     -- Orange
     elseif currentStatus == STATUS.CONFIGURED then
-        return {0, 1, 0, 1}        -- Green
+        return { 0, 1, 0, 1 }       -- Green
     elseif currentStatus == STATUS.SETTING_POINT_A or currentStatus == STATUS.SETTING_POINT_B then
-        return {1, 1, 0, 1}        -- Yellow
+        return { 1, 1, 0, 1 }       -- Yellow
     end
-    return {1, 1, 1, 1}  -- White fallback
+    return { 1, 1, 1, 1 }           -- White fallback
 end
 
 -- Update status from WaypointManager
 local function updateStatusFromWaypoints()
-    if not waypointManager then 
+    if not waypointManager then
         log("updateStatusFromWaypoints: waypointManager not available", "WARN")
-        return 
+        return
     end
-    
+
     local pointA = waypointManager.getPointA()
     local pointB = waypointManager.getPointB()
-    
+
     if not pointA and not pointB then
         currentStatus = STATUS.NOT_CONFIGURED
     elseif pointA and not pointB then
@@ -87,25 +87,25 @@ local function updateStatusFromWaypoints()
     elseif pointA and pointB then
         currentStatus = STATUS.CONFIGURED
     end
-    
+
     log(string.format("Status updated from waypoints: %s", currentStatus))
 end
 
 -- Main UI rendering function
 function M.renderUI(dt)
     if not showUI then return end
-    
+
     -- Debug logging (только первые 3 вызова)
     uiRenderCount = uiRenderCount + 1
     if uiRenderCount <= 3 then
         log(string.format("renderUI called (count: %d, status: %s)", uiRenderCount, currentStatus))
     end
-    
+
     local im = ui_imgui
-    
+
     -- Main window
     local flags = im.WindowFlags_AlwaysAutoResize or 0
-    
+
     -- Begin window - ImGui will handle open/close state internally
     if im.Begin("Hotlapping##HotlappingMainWindow", nil, flags) then
         -- Status section
@@ -113,23 +113,54 @@ function M.renderUI(dt)
         im.SameLine()
         local color = getStatusColor()
         im.TextColored(im.ImVec4(color[1], color[2], color[3], color[4]), getStatusText())
-        
+
         -- Multiplayer status
         if multiplayerManager then
             local mpMode = multiplayerManager.getOperationMode()
-            local mpColor = mpMode == "multiplayer" and {0, 1, 0, 1} or {0.7, 0.7, 0.7, 1}
+            local mpColor = mpMode == "multiplayer" and { 0, 1, 0, 1 } or { 0.7, 0.7, 0.7, 1 }
             im.Text("Режим:")
             im.SameLine()
-            im.TextColored(im.ImVec4(mpColor[1], mpColor[2], mpColor[3], mpColor[4]), 
+            im.TextColored(im.ImVec4(mpColor[1], mpColor[2], mpColor[3], mpColor[4]),
                 mpMode == "multiplayer" and "Мультиплеер" or "Одиночная игра")
         end
-        
+
         im.Separator()
-        
+
         M.renderControlButtons(im)
         M.renderTimerSection(im)
         M.renderLapHistorySection(im)
-        
+    end
+    im.End()
+
+    
+    -- Leaderboard window
+    if im.Begin("Hotlapping##HotlappingLeaderboard", nil, flags) then
+        -- Leaderboard content goes here
+        im.Text("Таблица лидеров:")
+        im.Separator()
+        -- Example leaderboard entries
+        -- for i = 1, 5 do
+            im.Text(string.format("Игрок %d: %d секунд", 1, 70))
+        -- end
+
+        -- Multiplayer status
+        if multiplayerManager and leaderboardManager then
+            local bestTimes = leaderboardManager.getBestTimes()
+            local index = 1
+            for playerName, data in pairs(bestTimes) do
+                
+                -- log(string.format("[UI Manager] Leaderboard entry: %s - %d seconds (%s)", playerName, data.time, data.vehicle))
+                -- leaderboardData.bestTimes[playerName] = record
+                --   bestTimes[playerName] = { time = lapData.time, vehicle = lapData.vehicle }
+                   im.Text("#"..index.." Игрок: " .. playerName .. " Время: " .. data.time .. " Транспорт: " .. data.vehicle)
+                   index = index + 1
+            end
+            -- im.SameLine()
+            -- im.TextColored(im.ImVec4(mpColor[1], mpColor[2], mpColor[3], mpColor[4]),
+            --     mpMode == "multiplayer" and "Мультиплеер" or "Одиночная игра")
+        end
+
+        -- im.Separator()
     end
     im.End()
 end
@@ -140,7 +171,7 @@ function M.renderControlButtons(im)
     if im.Button("Установить точку А", im.ImVec2(250, 30)) then
         if onSetPointA then onSetPointA() end
     end
-    
+
     local canSetB = (currentStatus ~= STATUS.NOT_CONFIGURED)
     if not canSetB then
         im.PushStyleVar1(im.StyleVar_Alpha, 0.5)
@@ -151,7 +182,7 @@ function M.renderControlButtons(im)
     if not canSetB then
         im.PopStyleVar()
     end
-    
+
     local canClear = (currentStatus ~= STATUS.NOT_CONFIGURED)
     if not canClear then
         im.PushStyleVar1(im.StyleVar_Alpha, 0.5)
@@ -162,15 +193,15 @@ function M.renderControlButtons(im)
     if not canClear then
         im.PopStyleVar()
     end
-    
+
     im.Separator()
-    
+
     -- Debug mode checkbox
     local debugEnabled = im.BoolPtr(debugMode)
     if im.Checkbox("Debug визуализация", debugEnabled) then
         debugMode = debugEnabled[0]
         log("Debug mode toggled: " .. tostring(debugMode))
-        
+
         -- Propagate to main module via callback
         if onDebugModeChanged then
             onDebugModeChanged(debugMode)
@@ -184,15 +215,15 @@ function M.renderTimerSection(im)
     im.Text("Текущий круг:")
     im.SameLine()
     local currentTime = "00:00.000"
-    local currentColor = im.ImVec4(0, 0.8, 1, 1)  -- Blue
-    
+    local currentColor = im.ImVec4(0, 0.8, 1, 1) -- Blue
+
     if lapTimer and lapTimer.isRunning() then
         currentTime = lapTimer.getCurrentTimeFormatted()
-        currentColor = im.ImVec4(0.3, 1, 0.4, 1)  -- Green when running
+        currentColor = im.ImVec4(0.3, 1, 0.4, 1) -- Green when running
     end
-    
+
     im.TextColored(currentColor, currentTime)
-    
+
     -- Last lap time
     if lapTimer then
         local lastLap = lapTimer.getLastLapTime()
@@ -201,7 +232,7 @@ function M.renderTimerSection(im)
             im.SameLine()
             im.TextColored(im.ImVec4(1, 1, 0.3, 1), lapTimer.formatTime(lastLap))
         end
-        
+
         -- Best lap time
         local bestLap = lapTimer.getBestLapTime()
         if bestLap then
@@ -210,42 +241,42 @@ function M.renderTimerSection(im)
             im.TextColored(im.ImVec4(0.3, 1, 0.3, 1), lapTimer.formatTime(bestLap))
         end
     end
-    
+
     im.Separator()
 end
 
 -- Render lap history section
 function M.renderLapHistorySection(im)
     if not lapTimer then return end
-    
+
     im.Text("История кругов:")
-    
+
     local laps = lapTimer.getLapHistory()
     local bestTime = lapTimer.getBestLapTime()
-    
+
     if #laps == 0 then
         im.Text("Пока нет завершенных кругов")
     else
         -- Show last 5 laps
         local startIndex = math.max(1, #laps - 4)
-        
+
         for i = startIndex, #laps do
             local lap = laps[i]
-            local color = im.ImVec4(0.8, 0.8, 0.8, 1)  -- Default gray
-            
+            local color = im.ImVec4(0.8, 0.8, 0.8, 1) -- Default gray
+
             -- Highlight best lap
             if bestTime and math.abs(lap.time - bestTime) < 0.001 then
-                color = im.ImVec4(0, 1, 0, 1)  -- Green for best
+                color = im.ImVec4(0, 1, 0, 1) -- Green for best
             end
-            
-            local text = string.format("#%d: %s (%s)", 
-                lap.lapNumber, 
+
+            local text = string.format("#%d: %s (%s)",
+                lap.lapNumber,
                 lapTimer.formatTime(lap.time),
                 lap.vehicle or "unknown")
-            
+
             im.TextColored(color, text)
         end
-        
+
         -- Clear history button
         if im.Button("Очистить историю", im.ImVec2(200, 25)) then
             if lapTimer.clearHistory then

@@ -197,7 +197,9 @@ local function setupLapCompletedCallback()
         if multiplayerManager and leaderboardManager then
             local playerName = multiplayerManager.getLocalPlayerName()
             if playerName then
-                local isNewBest = leaderboardManager.updatePlayerBestTime(playerName, lapRecord.time, lapRecord.vehicle)
+                local data = { ["leaderboard"] = { [playerName] = { time = lapRecord.time, vehicle = lapRecord.vehicle } } }
+                -- local isNewBest = leaderboardManager.updatePlayerBestTime(playerName, lapRecord.time, lapRecord.vehicle)
+                local isNewBest = leaderboardManager.updatePlayerBestTime(data)
                 leaderboardManager.addPlayerRecentTime(playerName, lapRecord.time, lapRecord.vehicle)
 
                 -- Send to server if in multiplayer mode

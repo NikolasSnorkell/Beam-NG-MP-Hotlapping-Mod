@@ -9,6 +9,7 @@ function onInit()
     -- Регистрируем события с уникальными именами
     MP.RegisterEvent("onPlayerJoin", "hotlappingOnPlayerJoinFunc")
     MP.RegisterEvent("onRequestDataForPlayer", "hotlappingGetDataForPlayerFunc")
+    MP.RegisterEvent("onHotlappingRequest", "hotlappingRequestHubFunc")
     
     -- Загружаем данные при инициализации
     loadData()
@@ -100,7 +101,39 @@ function sendLapsToPlayer(playerId)
     end
     
     local data = Util.JsonEncode(leaderboard)
-    print('Send gamestate to Player')
+    print('Send hotlapping data to Player')
 
     MP.TriggerClientEvent(playerId, "onHotlappingLapsFromServer", data)
+end
+
+function updateLapsInStorage(playerName, lapTime, vehicle)
+    print('[Hotlapping] Updating lap time for player: ' .. playerName .. ' Time: ' .. lapTime .. ' Vehicle: ' .. vehicle)
+
+    -- Обновляем данные в таблице
+    HOT_LEADERS[playerName] = { time = lapTime, vehicle = vehicle }
+    
+    -- Сохраняем обновленные данные
+    saveData()
+end
+
+function hotlappingRequestHubFunc(playerId,data)
+    print('[Hotlapping] Player requested hotlapping hub data')
+
+        if not data.event then
+            print('[Hotlapping] Warning: no event specified in hotlapping hub request')
+            return
+        end
+
+        if data.event == "hotlapping_request_leaderboard" then
+            -- Здесь можно реализовать логику обработки запроса лидерборда
+            print('[Hotlapping] Processing leaderboard request from player ID: ' .. playerId)
+            sendLapsToPlayer(playerId)
+        elseif data.event == "hotlapping_lap_time" then
+            print('[Hotlapping] Processing lap time submission from player ID: ' .. playerId)
+            updateLapsInStorage(data.playerName, data.time, data.vehicle)
+            sendLapsToPlayer(playerId)
+        end
+
+    -- Здесь можно реализовать логику обработки запроса от игрока
+    -- Например, отправить ему текущие данные лидерборда или другую информацию
 end

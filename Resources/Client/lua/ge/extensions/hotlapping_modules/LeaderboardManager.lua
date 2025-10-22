@@ -35,7 +35,7 @@ function M.updatePlayerBestTime(data)
         print("[LeaderboardManager] Server data " .. playerName .. " time: " .. lapData.time .. " vehicle: " .. lapData.vehicle)
     end
     print("[LeaderboardManager] Best times updated from server data ")
-    return true
+    return false
     -- if not leaderboardData.bestTimes[playerName] or
     --     leaderboardData.bestTimes[playerName].time > time then
     --     leaderboardData.bestTimes[playerName] = {
