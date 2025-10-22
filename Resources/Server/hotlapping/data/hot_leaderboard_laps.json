@@ -1,5 +1,14 @@
 {
-    "leaderboard": {
-        "Snorkell": { "time": 12345, "vehicle": "CarModelA" }
-    }
+  "Snorkell": {
+    "bestTime": { "time": 120.5, "vehicle": "etk800", "timestamp": "..." },
+    "allLaps": [
+      {
+        "time": 121.2,
+        "vehicle": "etk800",
+        "timestamp": "...",
+        "lapNumber": 1
+      },
+      { "time": 120.5, "vehicle": "etk800", "timestamp": "...", "lapNumber": 2 }
+    ]
+  }
 }

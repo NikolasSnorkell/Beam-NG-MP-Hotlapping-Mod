@@ -15,6 +15,13 @@ local lapTimer = nil
 local multiplayerManager = nil
 local leaderboardManager = nil
 
+local LEADERBOARD_TABS = {
+    BEST_TIMES = 1,
+    RECENT_LAPS = 2
+}
+
+local currentLeaderboardTab = LEADERBOARD_TABS.BEST_TIMES
+
 -- Status enum
 local STATUS = {
     NOT_CONFIGURED = "not_configured",
@@ -132,37 +139,136 @@ function M.renderUI(dt)
     end
     im.End()
 
-    
+
     -- Leaderboard window
-    if im.Begin("Hotlapping##HotlappingLeaderboard", nil, flags) then
-        -- Leaderboard content goes here
-        im.Text("Таблица лидеров:")
-        im.Separator()
-        -- Example leaderboard entries
-        -- for i = 1, 5 do
-            im.Text(string.format("Игрок %d: %d секунд", 1, 70))
-        -- end
+    -- if im.Begin("Hotlapping##HotlappingLeaderboard", nil, flags) then
+    --     -- Leaderboard content goes here
+    --     im.Text("Таблица лидеров:")
+    --     im.Separator()
+    --     -- Example leaderboard entries
+    --     -- for i = 1, 5 do
+    --         im.Text(string.format("Игрок %d: %d секунд", 1, 70))
+    --     -- end
 
-        -- Multiplayer status
-        if multiplayerManager and leaderboardManager then
-            local bestTimes = leaderboardManager.getBestTimes()
-            local index = 1
-            for playerName, data in pairs(bestTimes) do
-                
-                -- log(string.format("[UI Manager] Leaderboard entry: %s - %d seconds (%s)", playerName, data.time, data.vehicle))
-                -- leaderboardData.bestTimes[playerName] = record
-                --   bestTimes[playerName] = { time = lapData.time, vehicle = lapData.vehicle }
-                   im.Text("#"..index.." Игрок: " .. playerName .. " Время: " .. data.time .. " Транспорт: " .. data.vehicle)
-                   index = index + 1
+    --     -- Multiplayer status
+    --     if multiplayerManager and leaderboardManager then
+    --         local bestTimes = leaderboardManager.getBestTimes()
+    --         local index = 1
+    --         for playerName, data in pairs(bestTimes) do
+
+    --             -- log(string.format("[UI Manager] Leaderboard entry: %s - %d seconds (%s)", playerName, data.time, data.vehicle))
+    --             -- leaderboardData.bestTimes[playerName] = record
+    --             --   bestTimes[playerName] = { time = lapData.time, vehicle = lapData.vehicle }
+    --                im.Text("#"..index.." Игрок: " .. playerName .. " Время: " .. data.time .. " Транспорт: " .. data.vehicle)
+    --                index = index + 1
+    --         end
+    --         -- im.SameLine()
+    --         -- im.TextColored(im.ImVec4(mpColor[1], mpColor[2], mpColor[3], mpColor[4]),
+    --         --     mpMode == "multiplayer" and "Мультиплеер" or "Одиночная игра")
+    --     end
+
+    --     -- im.Separator()
+    -- end
+
+
+    -- Leaderboard window
+    if im.Begin("Hotlapping Leaderboard##HotlappingLeaderboard", nil, flags) then
+        -- Tabs
+        if im.BeginTabBar("LeaderboardTabs") then
+            -- Tab 1: Best Times
+            if im.BeginTabItem("Лучшие времена") then
+                currentLeaderboardTab = LEADERBOARD_TABS.BEST_TIMES
+                M.renderBestTimesTab(im)
+                im.EndTabItem()
             end
-            -- im.SameLine()
-            -- im.TextColored(im.ImVec4(mpColor[1], mpColor[2], mpColor[3], mpColor[4]),
-            --     mpMode == "multiplayer" and "Мультиплеер" or "Одиночная игра")
-        end
 
-        -- im.Separator()
+            -- Tab 2: Recent Laps
+            if im.BeginTabItem("Последние круги") then
+                currentLeaderboardTab = LEADERBOARD_TABS.RECENT_LAPS
+                M.renderRecentLapsTab(im)
+                im.EndTabItem()
+            end
+
+            im.EndTabBar()
+        end
     end
     im.End()
+
+end
+
+-- Render Best Times tab
+function M.renderBestTimesTab(im)
+    if not leaderboardManager then
+        im.Text("Leaderboard не доступен")
+        return
+    end
+    
+    local bestTimes = leaderboardManager.getBestTimesArray()
+    
+    if not bestTimes or #bestTimes == 0 then
+        im.Text("Нет данных")
+        return
+    end
+    
+    -- Table header
+    if im.BeginTable("BestTimesTable", 4, im.TableFlags_Borders) then
+        im.TableSetupColumn("#", im.TableColumnFlags_WidthFixed, 30)
+        im.TableSetupColumn("Игрок", im.TableColumnFlags_WidthFixed, 150)
+        im.TableSetupColumn("Время", im.TableColumnFlags_WidthFixed, 100)
+        im.TableSetupColumn("Транспорт", im.TableColumnFlags_WidthFixed, 120)
+        im.TableHeadersRow()
+        
+        -- Table rows
+        for i, entry in ipairs(bestTimes) do
+            im.TableNextRow()
+            
+            im.TableNextColumn()
+            im.Text(tostring(i))
+            
+            im.TableNextColumn()
+            im.Text(entry.playerName or "Unknown")
+            
+            im.TableNextColumn()
+            local color = i == 1 and im.ImVec4(0, 1, 0, 1) or im.ImVec4(1, 1, 1, 1)
+            im.TextColored(color, string.format("%.3f", entry.time))
+            
+            im.TableNextColumn()
+            im.Text(entry.vehicle or "N/A")
+        end
+        
+        im.EndTable()
+    end
+end
+
+-- Render Recent Laps tab
+function M.renderRecentLapsTab(im)
+    if not leaderboardManager then
+        im.Text("Leaderboard не доступен")
+        return
+    end
+    
+    local recentLaps = leaderboardManager.getRecentLapsArray()
+    
+    if not recentLaps or not next(recentLaps) then
+        im.Text("Нет последних кругов")
+        return
+    end
+    
+    -- Display each player's recent laps
+    for playerName, laps in pairs(recentLaps) do
+        im.Text("Игрок: " .. playerName)
+        im.Indent(20)
+        
+        for i, lap in ipairs(laps) do
+            im.Text(string.format("  Круг #%d: %.3f сек (%s)", 
+                lap.lapNumber or i, 
+                lap.time, 
+                lap.vehicle or "N/A"))
+        end
+        
+        im.Unindent(20)
+        im.Separator()
+    end
 end
 
 -- Render control buttons section

@@ -95,8 +95,11 @@ end
 
 -- Complete current lap and record the time
 function M.completeLap()
+    log("========== completeLap() CALLED ==========", "INFO")
+    
     if currentState ~= TimerState.RUNNING then
         log("Timer not running, cannot complete lap", "WARN")
+        log("Current state: " .. tostring(currentState), "WARN")
         return nil
     end
     
@@ -112,8 +115,12 @@ function M.completeLap()
         vehicle = currentVehicleName
     }
     
+    log(string.format("Lap record created: #%d, time=%.3f, vehicle=%s", 
+        lapRecord.lapNumber, lapRecord.time, lapRecord.vehicle))
+    
     -- Add to history
     table.insert(lapHistory, lapRecord)
+    log("Added to history, total laps: " .. #lapHistory)
     
     -- Update best lap
     if not bestLapTime or lapTime < bestLapTime then
@@ -127,11 +134,16 @@ function M.completeLap()
     
     -- Trigger callback
     if onLapCompletedCallback then
+        log("Calling onLapCompletedCallback...", "INFO")
         onLapCompletedCallback(lapRecord)
+        log("onLapCompletedCallback finished", "INFO")
+    else
+        log("WARNING: onLapCompletedCallback is NIL!", "ERROR")
     end
     
     -- Reset for next lap
     currentState = TimerState.STOPPED
+    log("========== completeLap() FINISHED ==========", "INFO")
     
     return lapRecord
 end
@@ -370,7 +382,17 @@ end
 -- Set callback for lap completion
 ---@param callback function Function to call when lap is completed
 function M.setOnLapCompletedCallback(callback)
+    log("========== setOnLapCompletedCallback() CALLED ==========", "INFO")
+    log("Callback type: " .. type(callback))
+    
+    if type(callback) ~= "function" then
+        log("ERROR: Callback is not a function!", "ERROR")
+        return
+    end
+    
     onLapCompletedCallback = callback
+    log("Lap completed callback successfully set!", "INFO")
+    log("========== setOnLapCompletedCallback() FINISHED ==========", "INFO")
 end
 
 -- Set callback for lap start

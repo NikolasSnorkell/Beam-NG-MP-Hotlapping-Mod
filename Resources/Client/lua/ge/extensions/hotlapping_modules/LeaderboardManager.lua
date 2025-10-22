@@ -9,9 +9,9 @@ local debugMode = true
 
 -- Leaderboard data structures
 local leaderboardData = {
-    bestTimes = {},   -- Лучшие времена игроков: {playerName: {time, vehicle, timestamp}}
-    recentTimes = {}, -- Последние 3 круга каждого игрока: {playerName: [{time, vehicle, timestamp}...]}
-    lastUpdate = 0    -- Timestamp последнего обновления
+    bestTimes = {},  -- Топ-10 лучших времен: [{playerName, time, vehicle}...]
+    recentLaps = {}, -- Последние 3 круга каждого: {playerName: [{time, vehicle}...]}
+    lastUpdate = 0
 }
 
 -- Utility function for logging
@@ -23,31 +23,53 @@ local function log(message, level)
 end
 
 -- Functions for leaderboard data management
-function M.updatePlayerBestTime(data)
-    if not data then
-        log("No data provided for updating best time", "WARN")
+-- function M.updatePlayerBestTime(data)
+--     if not data then
+--         log("No data provided for updating best time", "WARN")
+--         return false
+--     end
+
+
+--     for playerName, lapData in pairs(data.leaderboard) do
+--         leaderboardData.bestTimes[playerName] = { time = lapData.time, vehicle = lapData.vehicle }
+--         print("[LeaderboardManager] Server data " .. playerName .. " time: " .. lapData.time .. " vehicle: " .. lapData.vehicle)
+--     end
+--     print("[LeaderboardManager] Best times updated from server data ")
+--     return false
+--     -- if not leaderboardData.bestTimes[playerName] or
+--     --     leaderboardData.bestTimes[playerName].time > time then
+--     --     leaderboardData.bestTimes[playerName] = {
+--     --         time = time,
+--     --         vehicle = vehicle,
+--     --         timestamp = os.date("%Y-%m-%d %H:%M:%S")
+--     --     }
+--     --     leaderboardData.lastUpdate = os.time()
+--     --     log(string.format("Updated best time for %s: %.3fs", playerName, time))
+--     --     return true -- Новый рекорд
+--     -- end
+--     -- return false
+-- end
+
+function M.updatePlayerBestTime(serverData)
+    if not serverData then
+        log("No data provided", "WARN")
         return false
     end
 
-
-    for playerName, lapData in pairs(data.leaderboard) do
-        leaderboardData.bestTimes[playerName] = { time = lapData.time, vehicle = lapData.vehicle }
-        print("[LeaderboardManager] Server data " .. playerName .. " time: " .. lapData.time .. " vehicle: " .. lapData.vehicle)
+    -- Обновляем лучшие времена
+    if serverData.bestTimes then
+        leaderboardData.bestTimes = serverData.bestTimes
+        log("Updated best times: " .. #serverData.bestTimes .. " entries")
     end
-    print("[LeaderboardManager] Best times updated from server data ")
-    return false
-    -- if not leaderboardData.bestTimes[playerName] or
-    --     leaderboardData.bestTimes[playerName].time > time then
-    --     leaderboardData.bestTimes[playerName] = {
-    --         time = time,
-    --         vehicle = vehicle,
-    --         timestamp = os.date("%Y-%m-%d %H:%M:%S")
-    --     }
-    --     leaderboardData.lastUpdate = os.time()
-    --     log(string.format("Updated best time for %s: %.3fs", playerName, time))
-    --     return true -- Новый рекорд
-    -- end
-    -- return false
+
+    -- Обновляем последние круги
+    if serverData.recentLaps then
+        leaderboardData.recentLaps = serverData.recentLaps
+        log("Updated recent laps")
+    end
+
+    leaderboardData.lastUpdate = os.time()
+    return true
 end
 
 function M.addPlayerRecentTime(playerName, time, vehicle)
@@ -89,6 +111,14 @@ end
 
 function M.getLastUpdate()
     return leaderboardData.lastUpdate
+end
+
+function M.getBestTimesArray()
+    return leaderboardData.bestTimes or {}
+end
+
+function M.getRecentLapsArray()
+    return leaderboardData.recentLaps or {}
 end
 
 -- JSON formats for server communication

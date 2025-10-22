@@ -188,28 +188,53 @@ end
 
 -- Setup lap completion callback for multiplayer integration
 local function setupLapCompletedCallback()
-    if not lapTimer then return end
+    if not lapTimer then 
+        log("setupLapCompletedCallback: lapTimer is nil!", "ERROR")
+        return 
+    end
+
+    log("Setting up lap completed callback...")
 
     lapTimer.setOnLapCompletedCallback(function(lapRecord)
-        log(string.format("Lap completed callback: %.3fs", lapRecord.time))
+        log("========== LAP COMPLETED CALLBACK TRIGGERED ==========", "INFO")
+        log(string.format("Lap #%d completed: %.3fs", lapRecord.lapNumber or 0, lapRecord.time))
+        log(string.format("Vehicle: %s", lapRecord.vehicle or "unknown"))
 
-        -- Update local leaderboard data
-        if multiplayerManager and leaderboardManager then
-            local playerName = multiplayerManager.getLocalPlayerName()
-            if playerName then
-                local data = { ["leaderboard"] = { [playerName] = { time = lapRecord.time, vehicle = lapRecord.vehicle } } }
-                -- local isNewBest = leaderboardManager.updatePlayerBestTime(playerName, lapRecord.time, lapRecord.vehicle)
-                local isNewBest = leaderboardManager.updatePlayerBestTime(data)
-                leaderboardManager.addPlayerRecentTime(playerName, lapRecord.time, lapRecord.vehicle)
-
-                -- Send to server if in multiplayer mode
-                if multiplayerManager.isInMP() then
-                    local mapName = storageManager and storageManager.getCurrentMapName() or "unknown"
-                    multiplayerManager.sendLapTimeToServer(lapRecord.time, lapRecord.vehicle, isNewBest, mapName)
-                end
-            end
+        if not multiplayerManager then
+            log("MultiplayerManager is nil!", "ERROR")
+            return
         end
+
+        if not leaderboardManager then
+            log("LeaderboardManager is nil!", "ERROR")
+            return
+        end
+
+        log("Managers available, preparing to send...")
+        
+        local mapName = storageManager and storageManager.getCurrentMapName() or "unknown"
+        log(string.format("Map name: %s", mapName))
+
+        -- Отправляем на сервер с номером круга
+        log("Calling sendLapTimeToServer...")
+        local success = multiplayerManager.sendLapTimeToServer(
+            lapRecord.time,
+            lapRecord.vehicle,
+            false, -- isNewBest определит сервер
+            mapName,
+            lapRecord.lapNumber
+        )
+        
+        if success then
+            log("Lap time sent successfully!", "INFO")
+        else
+            log("Failed to send lap time", "ERROR")
+        end
+        
+        log("========== LAP CALLBACK FINISHED ==========", "INFO")
     end)
+    
+    log("Lap completed callback set successfully!")
 end
 
 -- Load default waypoints from JSON file
@@ -604,13 +629,34 @@ local function onVehicleSwitched(oldVehicle, newVehicle, player)
 end
 
 
-function onHotlappingLapsFromServer(data)
+-- function onHotlappingLapsFromServer(data)
+--     log("Received leaderboard data from server")
+--     if storageManager then
+--         data = storageManager.safeJsonDecode(data)
+--         if leaderboardManager then
+--             leaderboardManager.updatePlayerBestTime(data)
+--         end
+--     end
+-- end
+
+function onHotlappingLapsFromServer(rawData)
     log("Received leaderboard data from server")
-    if storageManager then
-        data = storageManager.safeJsonDecode(data)
-        if leaderboardManager then
-            leaderboardManager.updatePlayerBestTime(data)
-        end
+
+    if not storageManager then
+        log("StorageManager not available", "ERROR")
+        return
+    end
+
+    local data = storageManager.safeJsonDecode(rawData)
+
+    if not data then
+        log("Failed to decode server data", "ERROR")
+        return
+    end
+
+    if leaderboardManager then
+        leaderboardManager.updatePlayerBestTime(data)
+        log("Leaderboard data updated successfully")
     end
 end
 

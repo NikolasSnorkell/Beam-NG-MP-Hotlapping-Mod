@@ -18,7 +18,8 @@ end
 -- BeamMP detection functions
 function M.isInMP()
     -- Проверяем наличие MP API для BeamNG Drive мультиплеера
-    return MP ~= nil and type(MP.GetPlayerName) == "function"
+    -- return MP ~= nil and type(MP.GetPlayerName) == "function"
+    return true
 end
 
 function M.isBeamMPConnected()
@@ -47,14 +48,20 @@ function M.getLocalPlayerName()
     end
 end
 
--- Server communication functions
-function M.sendLapTimeToServer(time, vehicle, isNewBest, mapName)
+function M.sendLapTimeToServer(time, vehicle, isNewBest, mapName, lapNumber)
+    log("========== sendLapTimeToServer() CALLED ==========", "INFO")
+    log(string.format("Parameters: time=%.3f, vehicle=%s, mapName=%s, lapNumber=%s", 
+        time, tostring(vehicle), tostring(mapName), tostring(lapNumber)))
+    
     if not M.isInMP() then
-        log("Not in multiplayer mode, skipping server sync", "DEBUG")
+        log("Not in multiplayer mode", "WARN")
         return false
     end
     
+    log("In multiplayer mode, preparing message...")
+    
     local playerName = M.getLocalPlayerName()
+    log("Player name: " .. tostring(playerName))
     
     local message = {
         event = "hotlapping_lap_time",
@@ -63,13 +70,20 @@ function M.sendLapTimeToServer(time, vehicle, isNewBest, mapName)
         time = time,
         vehicle = vehicle,
         isNewBest = isNewBest,
-        -- timestamp = os.date("%Y-%m-%d %H:%M:%S")
+        lapNumber = lapNumber,
+        timestamp = os.time()
     }
     
-    -- TODO: Implement actual server communication
-    TriggerServerEvent("onHotlappingEvent", jsonEncode(message))
-    log(string.format("Would send to server: %s completed lap %.3fs (best: %s) on %s", 
-        playerName, time, tostring(isNewBest), mapName), "DEBUG")
+    log("Message prepared, encoding to JSON...")
+    local jsonMessage = jsonEncode(message)
+    log("JSON encoded, length: " .. tostring(#jsonMessage))
+    
+    log("Triggering server event 'onHotlappingRequest'...")
+    TriggerServerEvent("onHotlappingRequest", jsonMessage)
+    
+    log(string.format("Lap time sent to server: %s completed lap %.3fs (lap #%d) on %s", 
+        playerName, time, lapNumber or 0, mapName), "INFO")
+    log("========== sendLapTimeToServer() FINISHED ==========", "INFO")
     
     return true
 end
@@ -85,7 +99,7 @@ function M.requestLeaderboardFromServer(mapName)
         mapName = mapName
     }
     
-    TriggerServerEvent("onRequestDataForPlayer", jsonEncode(message))
+    TriggerServerEvent("onHotlappingRequest", jsonEncode(message))
     log(string.format("Would request leaderboard from server for map: %s", message.mapName), "DEBUG")
     
     return true
