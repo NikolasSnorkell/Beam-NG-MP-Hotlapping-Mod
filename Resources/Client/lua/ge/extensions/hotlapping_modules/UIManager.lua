@@ -193,7 +193,6 @@ function M.renderUI(dt)
         end
     end
     im.End()
-
 end
 
 -- Render Best Times tab
@@ -202,14 +201,14 @@ function M.renderBestTimesTab(im)
         im.Text("Leaderboard не доступен")
         return
     end
-    
+
     local bestTimes = leaderboardManager.getBestTimesArray()
-    
+
     if not bestTimes or #bestTimes == 0 then
         im.Text("Нет данных")
         return
     end
-    
+
     -- Table header
     if im.BeginTable("BestTimesTable", 4, im.TableFlags_Borders) then
         im.TableSetupColumn("#", im.TableColumnFlags_WidthFixed, 30)
@@ -217,26 +216,26 @@ function M.renderBestTimesTab(im)
         im.TableSetupColumn("Время", im.TableColumnFlags_WidthFixed, 100)
         im.TableSetupColumn("Транспорт", im.TableColumnFlags_WidthFixed, 120)
         im.TableHeadersRow()
-        
+
         -- Table rows
         for i, entry in ipairs(bestTimes) do
             im.TableNextRow()
-            
+
             im.TableNextColumn()
             im.Text(tostring(i))
-            
+
             im.TableNextColumn()
             im.Text(entry.playerName or "Unknown")
-            
+
             im.TableNextColumn()
             local color = i == 1 and im.ImVec4(0, 1, 0, 1) or im.ImVec4(1, 1, 1, 1)
             -- im.TextColored(color, string.format("%.3f", entry.time))
-            im.TextColored(color, lapTimer.formatTime(entry.time) )
-            
+            im.TextColored(color, lapTimer.formatTime(entry.time))
+
             im.TableNextColumn()
             im.Text(entry.vehicle or "N/A")
         end
-        
+
         im.EndTable()
     end
 end
@@ -247,29 +246,94 @@ function M.renderRecentLapsTab(im)
         im.Text("Leaderboard не доступен")
         return
     end
-    
+
     local recentLaps = leaderboardManager.getRecentLapsArray()
-    
+
     if not recentLaps or not next(recentLaps) then
         im.Text("Нет последних кругов")
         return
     end
-    
+
     -- Display each player's recent laps
-    for playerName, laps in pairs(recentLaps) do
-        im.Text("Игрок: " .. playerName)
-        im.Indent(20)
-        
-        for i, lap in ipairs(laps) do
-            -- im.Text(string.format("  Круг #%d: %.3f мин (%s)", 
-            --     lap.lapNumber or i, 
-            --     string.format("%.3f", lap.time), 
-            --     lap.vehicle or "N/A"))
-             im.Text("Круг #" .. (lap.lapNumber or i) .. " Время: " .. lapTimer.formatTime(lap.time) .. " Авто: " .. (lap.vehicle or "N/A"))   
+    -- for playerName, laps in pairs(recentLaps) do
+    --     im.Text("Игрок: " .. playerName)
+    --     im.Indent(20)
+
+    --     for i, lap in ipairs(laps) do
+    --         -- im.Text(string.format("  Круг #%d: %.3f мин (%s)",
+    --         --     lap.lapNumber or i,
+    --         --     string.format("%.3f", lap.time),
+    --         --     lap.vehicle or "N/A"))
+    --         im.Text("Круг #" ..
+    --             (lap.lapNumber or i) ..
+    --             " Время: " .. lapTimer.formatTime(lap.time) .. " Авто: " .. (lap.vehicle or "N/A"))
+    --     end
+
+    --     im.Unindent(20)
+    --     im.Separator()
+    -- end
+
+    if im.BeginTable("RecentTimesTable", 4, im.TableFlags_Borders) then
+        im.TableSetupColumn("#", im.TableColumnFlags_WidthFixed, 30)
+        im.TableSetupColumn("Игрок", im.TableColumnFlags_WidthFixed, 150)
+        im.TableSetupColumn("Время", im.TableColumnFlags_WidthFixed, 100)
+        im.TableSetupColumn("Транспорт", im.TableColumnFlags_WidthFixed, 120)
+        im.TableHeadersRow()
+
+        for playerName, laps in pairs(recentLaps) do
+            -- im.Text("Игрок: " .. playerName)
+            -- im.Indent(20)
+
+            for i, lap in ipairs(laps) do
+                -- im.Text(string.format("  Круг #%d: %.3f мин (%s)",
+                --     lap.lapNumber or i,
+                --     string.format("%.3f", lap.time),
+                --     lap.vehicle or "N/A"))
+                -- im.Text("Круг #" ..
+                -- (lap.lapNumber or i) ..
+                -- " Время: " .. lapTimer.formatTime(lap.time) .. " Авто: " .. (lap.vehicle or "N/A"))
+
+                im.TableNextRow()
+
+                im.TableNextColumn()
+                im.Text(tostring(i))
+
+                im.TableNextColumn()
+                im.Text(playerName or "Unknown")
+
+                im.TableNextColumn()
+                -- local color = i == 1 and im.ImVec4(0, 1, 0, 1) or im.ImVec4(1, 1, 1, 1)
+                -- im.TextColored(color, string.format("%.3f", entry.time))
+                im.Text(lapTimer.formatTime(lap.time))
+
+                im.TableNextColumn()
+                im.Text(lap.vehicle or "N/A")
+            end
+
+            -- im.Unindent(20)
+            -- im.Separator()
         end
-        
-        im.Unindent(20)
-        im.Separator()
+
+        -- Table rows
+        -- for i, entry in ipairs(bestTimes) do
+        --     im.TableNextRow()
+
+        --     im.TableNextColumn()
+        --     im.Text(tostring(i))
+
+        --     im.TableNextColumn()
+        --     im.Text(entry.playerName or "Unknown")
+
+        --     im.TableNextColumn()
+        --     local color = i == 1 and im.ImVec4(0, 1, 0, 1) or im.ImVec4(1, 1, 1, 1)
+        --     -- im.TextColored(color, string.format("%.3f", entry.time))
+        --     im.TextColored(color, lapTimer.formatTime(entry.time))
+
+        --     im.TableNextColumn()
+        --     im.Text(entry.vehicle or "N/A")
+        -- end
+
+        im.EndTable()
     end
 end
 
