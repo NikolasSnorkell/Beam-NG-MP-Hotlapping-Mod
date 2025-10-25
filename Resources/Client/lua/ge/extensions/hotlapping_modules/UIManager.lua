@@ -230,7 +230,8 @@ function M.renderBestTimesTab(im)
             
             im.TableNextColumn()
             local color = i == 1 and im.ImVec4(0, 1, 0, 1) or im.ImVec4(1, 1, 1, 1)
-            im.TextColored(color, string.format("%.3f", entry.time))
+            -- im.TextColored(color, string.format("%.3f", entry.time))
+            im.TextColored(color, lapTimer.formatTime(entry.time) )
             
             im.TableNextColumn()
             im.Text(entry.vehicle or "N/A")
@@ -260,10 +261,11 @@ function M.renderRecentLapsTab(im)
         im.Indent(20)
         
         for i, lap in ipairs(laps) do
-            im.Text(string.format("  Круг #%d: %.3f сек (%s)", 
-                lap.lapNumber or i, 
-                lap.time, 
-                lap.vehicle or "N/A"))
+            -- im.Text(string.format("  Круг #%d: %.3f мин (%s)", 
+            --     lap.lapNumber or i, 
+            --     string.format("%.3f", lap.time), 
+            --     lap.vehicle or "N/A"))
+             im.Text("Круг #" .. (lap.lapNumber or i) .. " Время: " .. lapTimer.formatTime(lap.time) .. " Авто: " .. (lap.vehicle or "N/A"))   
         end
         
         im.Unindent(20)
