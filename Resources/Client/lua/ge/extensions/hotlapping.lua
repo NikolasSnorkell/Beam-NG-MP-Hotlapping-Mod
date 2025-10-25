@@ -700,6 +700,6 @@ M.getDebugMode = function()
 end
 
 -- Вызываем инициализацию при загрузке
-onExtensionLoaded()
+-- onExtensionLoaded()
 
 return M

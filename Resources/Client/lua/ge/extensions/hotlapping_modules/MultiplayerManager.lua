@@ -107,6 +107,20 @@ function M.requestLeaderboardFromServer(mapName)
     return true
 end
 
+function M.clearMyLeaderboardTimes()
+      if not M.isInMP() then
+        log("Not in multiplayer mode, skipping hotlapping_clear_user_leaderboard request", "DEBUG")
+        return false
+    end
+    
+    local message = {
+        event = "hotlapping_clear_user_leaderboard"
+    }
+    
+    TriggerServerEvent("onHotlappingRequest", jsonEncode(message))
+    
+    return true
+end
 -- Enable/disable debug mode
 function M.setDebugMode(enabled)
     debugMode = enabled

@@ -11,8 +11,8 @@ local WAYPOINTS_KEY = SETTINGS_PREFIX .. "waypoints"
 local LAP_HISTORY_KEY = SETTINGS_PREFIX .. "lap_history"
 local SETTINGS_KEY = SETTINGS_PREFIX .. "settings"
 
-local HOT_WAYPOINTS = "data/default_waypoints.json"
-
+local HOT_WAYPOINTS = 'data/default_waypoints.json'
+local HOT_WAYPOINTS2 = '../../../../data/default_waypoints.json'
 
 -- Storage limits
 local MAX_LAP_HISTORY_PER_MAP = 100 -- Maximum number of laps to keep per map
@@ -25,6 +25,23 @@ local function log(message, level)
     if debugMode then
         print(string.format("[StorageManager][%s] %s", level, message))
     end
+end
+
+-- Попробуйте этот фрагмент в своём моде (вставьте в место, где можно читать файл)
+local function try_open(paths)
+    for _, p in ipairs(paths) do
+        -- пробуем io.open сначала (synchronous, простейший способ)
+        local f, err = io.open(p, "rb")
+        if f then
+            local content = f:read("*a")
+            f:close()
+            return content, p
+        else
+            -- логируем попытку (замените на log если хотите)
+            print(string.format("[StorageManager] can't open '%s' (%s)", p, tostring(err)))
+        end
+    end
+    return nil, nil
 end
 
 -- Safe JSON decoder wrapper for BeamNG's built-in jsonDecode
@@ -70,6 +87,123 @@ local function safeJsonEncode(data)
     return nil
 end
 
+loadData = function()
+    print("[Hotlapping] Loading leaderboard data from file...")
+
+
+    -- -- Перечень путей, которые стоит попробовать (подставьте варианты под вашу структуру)
+    -- local candidate_paths = {
+    --     -- относительные от местоположения lua-файла (попробуйте несколько уровней вверх)
+    --     "../data/default_waypoints.json",
+    --     "../../data/default_waypoints.json",
+    --     "../../../data/default_waypoints.json",
+    --     -- относительные от Resources корня (в моде обычно есть /Resources/data/)
+    --     "data/default_waypoints.json",
+    --     "Resources/data/default_waypoints.json",
+    --     "Resources/hotlapping/data/default_waypoints.json",
+    --     "Resources/Hotlapping/data/default_waypoints.json",
+
+    --     -- полный путь внутри архива/мода — если точно знаете структуру
+    --     "/Hotlapping/Resources/data/default_waypoints.json",
+    --     "/Hotlapping/Resources/Client/data/default_waypoints.json"
+    -- }
+
+    -- local content, used_path = try_open(candidate_paths)
+    -- if not content then
+    --     print(
+    --     "[StorageManager] ERROR: couldn't find default_waypoints.json — проверьте структуру архива/файла и path candidates")
+    -- else
+    --     print("[StorageManager] successfully opened:", used_path)
+    --     -- парсим JSON (предположим, что в окружении доступна библиотека json.decode)
+    --     local ok, decoded = pcall(function() return M.safeJsonDecode(content) end)
+    --     if not ok then
+    --         print("[StorageManager] JSON decode failed:".. tostring(decoded))
+    --     elseif decoded and decoded['version'] then
+    --         print("[StorageManager] json decoded, version:".. decoded['version'])
+    --         print("[StorageManager] json decoded, keys count:".. (type(decoded) == "table" and #decoded or 0))
+    --     else
+    --         -- decoded — Lua-таблица с содержимым файла
+    --         -- пример: print(decoded.someField)
+    --         print("[StorageManager] json decoded, no version field found")
+    --         -- используйте decoded дальше по логике модуля
+    --     end
+    -- end
+
+    local f, err = io.open(HOT_WAYPOINTS, "rb")
+    if f then
+        local content = f:read("*a")
+        f:close()
+        return content
+    else
+        -- логируем попытку (замените на log если хотите)
+        print(string.format("[StorageManager] can't open '%s' (%s)", p, tostring(err)))
+    end
+
+    -- local handle = io.open(HOT_WAYPOINTS, "r")
+    -- if not handle then
+    --     print("[Hotlapping] No leaderboard data found, returning empty table.")
+    --     -- HOT_LEADERS = {}
+    --     -- return {}
+    --     -- print("[Hotlapping] SECOND ATTEMPT Loading leaderboard data from file...")
+    --     -- local handle2 = io.open(HOT_WAYPOINTS2, "r")
+    --     if not handle then
+    --         print("[Hotlapping] SECOND No leaderboard data found, returning empty table.")
+    --         -- HOT_LEADERS = {}
+    --         return {}
+    --     end
+    --     -- handle = handle2
+    -- end
+
+
+    -- local data = M.safeJsonDecode(handle:read("*all"))
+    -- handle:close()
+
+    -- Проверяем что данные загрузились корректно
+    -- if not data then
+    --     print("[Hotlapping] Invalid data format, returning empty table.")
+        -- HOT_LEADERS = {}
+        return {}
+    -- end
+
+    -- Очищаем старые данные
+    -- HOT_LEADERS = {}
+    -- for playerName, lapData in pairs(data) do
+    --     HOT_LEADERS[playerName] = lapData
+    -- end
+    -- for playerName, lapData in pairs(data.leaderboard) do
+    --     HOT_LEADERS[playerName] = { time = lapData.time, vehicle = lapData.vehicle }
+    -- end
+
+    -- Возвращаем загруженные данные
+    -- return data
+end
+
+-- saveData = function()
+--     -- Сохраняем текущие данные HOT_LEADERS в файл
+--     print("[Hotlapping] Saving leaderboard data to file...")
+--     if next(HOT_LEADERS) ~= nil then -- Проверяем что таблица не пустая
+--         -- local data = {}
+--         -- data["leaderboard"] = HOT_LEADERS
+
+
+--         local handle = io.open(HOT_WAYPOINTS, "w")
+--         if handle then
+--             handle:write(Util.JsonEncode(HOT_LEADERS))
+--             handle:close()
+--             print("[Hotlapping] Data saved successfully")
+--         else
+--             print("[Hotlapping] Error: Could not open file for writing")
+--         end
+--     else
+--         print("[Hotlapping] No data to save")
+--     end
+-- end
+
+
+
+
+
+
 -- Get current map name
 local function getCurrentMapName()
     -- Get the level path and extract map name
@@ -93,147 +227,41 @@ local function getCurrentMapName()
     return mapName
 end
 
-local function try_open(paths)
-    for _, p in ipairs(paths) do
-        -- пробуем io.open сначала (synchronous, простейший способ)
-        local f, err = io.open(p, "rb")
-        if f then
-            local content = f:read("*a")
-            f:close()
-            return content, p
-        else
-            -- логируем попытку (замените на log если хотите)
-            print(string.format("[StorageManager] can't open '%s' (%s)", p, tostring(err)))
-        end
-    end
-    return nil, nil
-end
-
--- local function loadAllWaypointsFromFile()
---     local f, err = io.open(HOT_WAYPOINTS, "rb")
---     local content = {}
---     if f then
---         content = f:read("all")
---         f:close()
---     else
---         -- логируем попытку (замените на log если хотите)
---         log("[StorageManager] can't open json file")
---         return {}
---     end
-
-
---     local ok, decoded = pcall(function() return M.safeJsonDecode(content) end)
-
---     if not ok then
---         print("[StorageManager] JSON decode failed:" .. tostring(decoded))
---     elseif decoded and decoded['version'] then
---         print("[StorageManager] json decoded, version:" .. decoded['version'])
---         return decoded['waypoints']
---     else
---         -- decoded — Lua-таблица с содержимым файла
---         -- пример: print(decoded.someField)
---         print("[StorageManager] json decoded, no version field found")
---         return {}
---         -- используйте decoded дальше по логике модуля
---     end
---     return {}
--- end
-
-local function loadAllWaypointsFromFile()
-    local candidate_paths = {
-        -- относительные от местоположения lua-файла (попробуйте несколько уровней вверх)
-        "../data/default_waypoints.json",
-        "../../data/default_waypoints.json",
-        "../../../data/default_waypoints.json",
-        -- относительные от Resources корня (в моде обычно есть /Resources/data/)
-        "data/default_waypoints.json",
-        "/data/default_waypoints.json",
-        "Resources/data/default_waypoints.json",
-        "Resources/hotlapping/data/default_waypoints.json",
-        "Resources/Hotlapping/data/default_waypoints.json",
-
-        -- полный путь внутри архива/мода — если точно знаете структуру
-        "/Hotlapping/Resources/data/default_waypoints.json",
-        "/Hotlapping/Resources/Client/data/default_waypoints.json"
-    }
-
-    local content, used_path = try_open(candidate_paths)
-
-
-
-    -- local f, err = io.open(used_path, "rb")
-    log(used_path)
-    -- if not f then
-    --     log("[StorageManager] can't open json file: " .. tostring(err))
-    --     return {}
-    -- end
-
-    -- local content = f:read("*a") -- <- важно: "*a", а не "all"
-    -- f:close()
-    -- content = content:gsub("^\239\187\191", "")
-    if not content or content == "" then
-        log("[StorageManager] file empty or couldn't read content")
-        return {}
-    end
-
-    -- Для дебага: не печатать весь файл, только начало
-    log(string.format("[StorageManager] read %d bytes, head: %s", #content,
-        (content:sub(1, 200)):gsub("\n", "\\n")))
-
-    local ok, decoded_or_err = pcall(function() return M.safeJsonDecode(content) end)
-    if not ok then
-        log("[StorageManager] JSON decode failed: " .. tostring(decoded_or_err))
-        return {}
-    end
-
-    local decoded = decoded_or_err
-    -- тип результата
-    log("[StorageManager] decoded type: " .. tostring(type(decoded)))
-
-    if type(decoded) == "table" then
-        if decoded.version then
-            log("[StorageManager] json decoded, version: " .. tostring(decoded.version))
-            return decoded.waypoints or {}
-        else
-            -- дополнительно: возможно JSON вложен в поле "data" или другой обёртке
-            -- попробуем на всякий случай несколько вариантов
-            if decoded[1] and type(decoded[1]) == "table" and decoded[1].version then
-                log("[StorageManager] json decoded inside array, version: " .. tostring(decoded[1].version))
-                return decoded[1].waypoints or {}
-            end
-
-            log("[StorageManager] json decoded, no version field found")
-            return {}
-        end
-    else
-        log("[StorageManager] decoded is not a table")
-        return {}
-    end
-end
-
-
 -- Load all waypoints data from storage
-local function loadAllWaypointsLocal()
+local function loadAllWaypoints()
     local dataStr = settings.getValue(WAYPOINTS_KEY)
 
-    if not dataStr or dataStr == "" then
-        log("No waypoints data found in storage")
-        return {}
-    end
+    local data = loadData()
 
-    local data = M.safeJsonDecode(dataStr)
-
-    if not data then
+      if not data then
         log("Failed to parse waypoints data", "ERROR")
         return {}
     end
 
-    log(string.format("Loaded waypoints for %d maps", table.getn(data) or 0))
-    return data
+    local ok, decoded = pcall(function() return M.safeJsonDecode(data) end)
+
+    -- if not dataStr or dataStr == "" then
+    --     log("No waypoints data found in storage")
+    --     return {}
+    -- end
+
+    -- local data = M.safeJsonDecode(dataStr)
+
+    if not ok or not decode or decoded == nil then
+        print("[StorageManager] JSON decode failed:" .. tostring(decoded))
+    elseif decoded and decoded['waypoints'] then
+        print("[StorageManager] json decoded, version:" .. decoded['version'])
+        print("[StorageManager] json decoded, keys count:" .. (type(decoded['waypoints']) == "table" and #decoded['waypoints'] or 0))
+    end
+
+  
+
+    -- log(string.format("Loaded waypoints for %d maps", table.getn(decoded['waypoints']) or 0))
+    return decoded['waypoints']
 end
 
 -- Save all waypoints data to storage
-local function saveAllWaypointsLocal(data)
+local function saveAllWaypoints(data)
     -- Debug: print structure before encoding
     if debugMode then
         log("=== Attempting to save waypoints ===")
@@ -317,7 +345,7 @@ function M.saveFinishLine(pointA, pointB, mapName)
     end
 
     -- Load all waypoints
-    local allWaypoints = loadAllWaypointsLocal()
+    local allWaypoints = loadAllWaypoints()
 
     -- Save waypoints for this map
     allWaypoints[mapName] = {
@@ -335,7 +363,7 @@ function M.saveFinishLine(pointA, pointB, mapName)
     }
 
     -- Save back to storage
-    local success = saveAllWaypointsLocal(allWaypoints)
+    local success = saveAllWaypoints(allWaypoints)
 
     if success then
         log(string.format("Finish line saved for map: %s", mapName))
@@ -356,7 +384,7 @@ function M.loadFinishLine(mapName)
     end
 
     -- Load all waypoints
-    local allWaypoints = loadAllWaypointsLocal()
+    local allWaypoints = loadAllWaypoints()
     if not allWaypoints then
         log(string.format("No waypoints found in storage"), "ERROR")
         return nil
@@ -390,13 +418,13 @@ function M.deleteFinishLine(mapName)
     end
 
     -- Load all waypoints
-    local allWaypoints = loadAllWaypointsLocal()
+    local allWaypoints = loadAllWaypoints()
 
     -- Remove waypoints for this map
     allWaypoints[mapName] = nil
 
     -- Save back to storage
-    local success = saveAllWaypointsLocal(allWaypoints)
+    local success = saveAllWaypoints(allWaypoints)
 
     if success then
         log(string.format("Finish line deleted for map: %s", mapName))
@@ -518,7 +546,7 @@ end
 -- Get list of all maps with saved data
 ---@return table List of map names with saved waypoints or lap history
 function M.getSavedMaps()
-    local allWaypoints = loadAllWaypointsLocal()
+    local allWaypoints = loadAllWaypoints()
     local allHistory = loadAllLapHistory()
 
     local maps = {}
@@ -696,7 +724,7 @@ end
 -- Export all waypoints to default_waypoints.json format
 ---@return string JSON string with all waypoints
 function M.exportAllWaypoints()
-    local allWaypoints = loadAllWaypointsLocal()
+    local allWaypoints = loadAllWaypoints()
 
     local exportData = {
         version = "1.0",
@@ -758,7 +786,7 @@ end
 -- Get storage statistics
 ---@return table Statistics about stored data
 function M.getStatistics()
-    local allWaypoints = loadAllWaypointsLocal()
+    local allWaypoints = loadAllWaypoints()
     local allHistory = loadAllLapHistory()
 
     local waypointCount = 0

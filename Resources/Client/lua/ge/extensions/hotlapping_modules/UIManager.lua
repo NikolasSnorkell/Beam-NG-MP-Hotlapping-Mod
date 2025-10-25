@@ -15,6 +15,11 @@ local lapTimer = nil
 local multiplayerManager = nil
 local leaderboardManager = nil
 
+local HOTLAPPING_TABS = {
+    TIMES = 1,
+    SETTINGS = 2
+}
+
 local LEADERBOARD_TABS = {
     BEST_TIMES = 1,
     RECENT_LAPS = 2
@@ -115,27 +120,27 @@ function M.renderUI(dt)
 
     -- Begin window - ImGui will handle open/close state internally
     if im.Begin("Hotlapping##HotlappingMainWindow", nil, flags) then
-        -- Status section
-        im.Text("Статус:")
-        im.SameLine()
-        local color = getStatusColor()
-        im.TextColored(im.ImVec4(color[1], color[2], color[3], color[4]), getStatusText())
+        if im.BeginTabBar("HotlappingTabs") then
+            -- Tab 1: Timer
+            if im.BeginTabItem("Times") then
+                currentLeaderboardTab = HOTLAPPING_TABS.TIMES
 
-        -- Multiplayer status
-        if multiplayerManager then
-            local mpMode = multiplayerManager.getOperationMode()
-            local mpColor = mpMode == "multiplayer" and { 0, 1, 0, 1 } or { 0.7, 0.7, 0.7, 1 }
-            im.Text("Режим:")
-            im.SameLine()
-            im.TextColored(im.ImVec4(mpColor[1], mpColor[2], mpColor[3], mpColor[4]),
-                mpMode == "multiplayer" and "Мультиплеер" or "Одиночная игра")
+                M.renderTimerTab(im)
+
+                im.EndTabItem()
+            end
+
+            -- Tab 2: Settings
+            if im.BeginTabItem("Settings") then
+                currentLeaderboardTab = HOTLAPPING_TABS.SETTINGS
+
+                M.renderSettingsTab(im)
+
+                im.EndTabItem()
+            end
+
+            im.EndTabBar()
         end
-
-        im.Separator()
-
-        M.renderControlButtons(im)
-        M.renderTimerSection(im)
-        M.renderLapHistorySection(im)
     end
     im.End()
 
@@ -172,18 +177,18 @@ function M.renderUI(dt)
 
 
     -- Leaderboard window
-    if im.Begin("Hotlapping Leaderboard##HotlappingLeaderboard", nil, flags) then
+    if im.Begin("Hotlapping Leaderboard(Server)##HotlappingLeaderboard", nil, flags) then
         -- Tabs
         if im.BeginTabBar("LeaderboardTabs") then
             -- Tab 1: Best Times
-            if im.BeginTabItem("Лучшие времена") then
+            if im.BeginTabItem("Best times") then
                 currentLeaderboardTab = LEADERBOARD_TABS.BEST_TIMES
                 M.renderBestTimesTab(im)
                 im.EndTabItem()
             end
 
             -- Tab 2: Recent Laps
-            if im.BeginTabItem("Последние круги") then
+            if im.BeginTabItem("Recent laps") then
                 currentLeaderboardTab = LEADERBOARD_TABS.RECENT_LAPS
                 M.renderRecentLapsTab(im)
                 im.EndTabItem()
@@ -193,6 +198,33 @@ function M.renderUI(dt)
         end
     end
     im.End()
+end
+
+function M.renderSettingsTab(im)
+    -- Status section
+    im.Text("Статус:")
+    im.SameLine()
+    local color = getStatusColor()
+    im.TextColored(im.ImVec4(color[1], color[2], color[3], color[4]), getStatusText())
+
+    -- Multiplayer status
+    if multiplayerManager then
+        local mpMode = multiplayerManager.getOperationMode()
+        local mpColor = mpMode == "multiplayer" and { 0, 1, 0, 1 } or { 0.7, 0.7, 0.7, 1 }
+        im.Text("Режим:")
+        im.SameLine()
+        im.TextColored(im.ImVec4(mpColor[1], mpColor[2], mpColor[3], mpColor[4]),
+            mpMode == "multiplayer" and "Мультиплеер" or "Одиночная игра")
+    end
+
+    im.Separator()
+
+    M.renderControlButtons(im)
+end
+
+function M.renderTimerTab(im)
+    M.renderTimerSection(im)
+    M.renderLapHistorySection(im)
 end
 
 -- Render Best Times tab
@@ -450,10 +482,16 @@ function M.renderLapHistorySection(im)
         end
 
         -- Clear history button
-        if im.Button("Очистить историю", im.ImVec2(200, 25)) then
+        if im.Button("Clear history", im.ImVec2(200, 25)) then
             if lapTimer.clearHistory then
                 lapTimer.clearHistory()
                 log("Lap history cleared by user")
+            end
+        end
+           if im.Button("Clear my Leaderboard times", im.ImVec2(200, 25)) then
+            if multiplayerManager then
+                multiplayerManager.clearMyLeaderboardTimes()
+                log("Leaderboard user times cleared by user")
             end
         end
     end

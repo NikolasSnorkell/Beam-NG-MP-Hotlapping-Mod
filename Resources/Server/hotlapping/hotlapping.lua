@@ -272,6 +272,23 @@ function updateLapsInStorage(playerId, lapTime, vehicle, lapNumber)
     saveData()
 end
 
+function clearPlayerLeaderboardTimes(playerId)
+    local playerName = MP.GetPlayerName(playerId)
+
+    print('[Hotlapping] Clearing times for: ' .. playerName )
+    
+    -- Чистим данные игрока
+        HOT_LEADERS[playerName] = {
+            bestTime = nil,
+            allLaps = {}
+        }
+    
+    
+    -- Сохраняем на диск
+    saveData()
+
+end
+
 function hotlappingRequestHubFunc(playerId, data)
     print('[Hotlapping] Player requested hotlapping hub data')
     data = Util.JsonDecode(data)
@@ -287,7 +304,13 @@ function hotlappingRequestHubFunc(playerId, data)
     elseif data.event == "hotlapping_lap_time" then
         print('[Hotlapping] Processing lap time submission from player ID: ' .. playerId)
          
-        updateLapsInStorage(playerId, data.time, data.vehicle)
+        updateLapsInStorage(playerId, data.time, data.vehicle,data.lapNumber)
+           -- Рассылаем обновление ВСЕМ игрокам
+        broadcastLeaderboardUpdate()
+    elseif data.event == "hotlapping_clear_user_leaderboard" then
+        print('[Hotlapping] Processing leaderboard clearing from player ID: ' .. playerId)
+         
+        clearPlayerLeaderboardTimes(playerId)
            -- Рассылаем обновление ВСЕМ игрокам
         broadcastLeaderboardUpdate()
     end
