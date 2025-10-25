@@ -10,6 +10,7 @@ local SETTINGS_PREFIX = "hotlapping_"
 local WAYPOINTS_KEY = SETTINGS_PREFIX .. "waypoints"
 local LAP_HISTORY_KEY = SETTINGS_PREFIX .. "lap_history"
 local SETTINGS_KEY = SETTINGS_PREFIX .. "settings"
+local UI_SETTINGS_KEY = SETTINGS_PREFIX .. "ui_settings"
 
 local HOT_WAYPOINTS = "data/default_waypoints.json"
 
@@ -68,6 +69,34 @@ local function safeJsonEncode(data)
 
     log("Failed to encode JSON: " .. tostring(result), "ERROR")
     return nil
+end
+
+-- Добавить функцию для сохранения UI настроек:
+function M.saveUISettings(uiSettings)
+    local dataStr = safeJsonEncode(uiSettings)
+    if dataStr then
+        settings.setValue(UI_SETTINGS_KEY, dataStr)
+        log("UI settings saved")
+        return true
+    end
+    return false
+end
+
+-- Добавить функцию для загрузки UI настроек:
+function M.loadUISettings()
+    local dataStr = settings.getValue(UI_SETTINGS_KEY)
+    if dataStr and dataStr ~= "" then
+        local data = M.safeJsonDecode(dataStr)
+        if data then
+            log("UI settings loaded successfully")
+            return data
+        end
+    end
+    -- Возвращаем настройки по умолчанию
+    return {
+        backgroundOpacity = 100,  -- 100%
+        fontSize = 1  -- 1 = маленький (текущий)
+    }
 end
 
 -- Get current map name

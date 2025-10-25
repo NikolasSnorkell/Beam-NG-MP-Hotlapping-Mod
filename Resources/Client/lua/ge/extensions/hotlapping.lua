@@ -85,7 +85,8 @@ local function loadModules()
         waypointManager = waypointManager,
         lapTimer = lapTimer,
         multiplayerManager = multiplayerManager,
-        leaderboardManager = leaderboardManager
+        leaderboardManager = leaderboardManager,
+        storageManager = storageManager
     })
 
     -- Setup debug mode for all modules

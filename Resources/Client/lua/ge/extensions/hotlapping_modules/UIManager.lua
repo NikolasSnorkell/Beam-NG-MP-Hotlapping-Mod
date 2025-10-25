@@ -14,6 +14,7 @@ local waypointManager = nil
 local lapTimer = nil
 local multiplayerManager = nil
 local leaderboardManager = nil
+local storageManager = nil
 
 local HOTLAPPING_TABS = {
     TIMES = 1,
@@ -24,6 +25,12 @@ local LEADERBOARD_TABS = {
     BEST_TIMES = 1,
     RECENT_LAPS = 2
 }
+
+local uiSettings = {
+    backgroundOpacity = 100, -- От 0 до 100
+    fontSize = 1             -- 1 = маленький, 2 = средний, 3 = большой
+}
+
 
 local currentLeaderboardTab = LEADERBOARD_TABS.BEST_TIMES
 
@@ -103,6 +110,42 @@ local function updateStatusFromWaypoints()
     log(string.format("Status updated from waypoints: %s", currentStatus))
 end
 
+-- Функция для получения размера шрифта
+local function getFontScale()
+    if uiSettings.fontSize == 1 then
+        return 1.0 -- Текущий размер (маленький)
+    elseif uiSettings.fontSize == 2 then
+        return 1.2 -- Средний (+20%)
+    else
+        return 1.4 -- Большой (+40%)
+    end
+end
+
+-- Функция для получения прозрачности фона окна
+local function getWindowAlpha()
+    return uiSettings.backgroundOpacity / 100.0
+end
+
+-- Функция для применения стилей перед отрисовкой
+local function applyUIStyles(im)
+    -- Применяем масштаб шрифта
+    local fontScale = getFontScale()
+    im.SetWindowFontScale(fontScale)
+
+    -- Применяем прозрачность фона окна
+    local alpha = getWindowAlpha()
+    im.PushStyleColor2(im.Col_WindowBg, im.GetStyleColorVec4(im.Col_WindowBg))
+    local bgColor = im.GetStyleColorVec4(im.Col_WindowBg)
+    bgColor.w = alpha * 0.9 -- Базовая прозрачность окна
+    im.PopStyleColor()
+    im.PushStyleColor2(im.Col_WindowBg, bgColor)
+end
+
+-- Функция для сброса стилей после отрисовки
+local function resetUIStyles(im)
+    im.PopStyleColor() -- Убираем изменение WindowBg
+end
+
 -- Main UI rendering function
 function M.renderUI(dt)
     if not showUI then return end
@@ -115,11 +158,26 @@ function M.renderUI(dt)
 
     local im = ui_imgui
 
+    -- applyUIStyles(im)
+    if im.StyleVar_WindowShadowSize then
+        im.PushStyleVar1(im.StyleVar_WindowShadowSize, 0.0)
+    end
+
+    if im.StyleVar_WindowBorderSize then
+        im.PushStyleVar1(im.StyleVar_WindowBorderSize, 0.0)
+    end
+    -- Применяем прозрачность ДО всех окон
+    local alpha = getWindowAlpha()
+    local bgColor = im.GetStyleColorVec4(im.Col_WindowBg)
+    bgColor.w = alpha * 0.9
+    im.PushStyleColor2(im.Col_WindowBg, bgColor)
+
     -- Main window
     local flags = im.WindowFlags_AlwaysAutoResize or 0
 
     -- Begin window - ImGui will handle open/close state internally
-    if im.Begin("Hotlapping##HotlappingMainWindow", nil, flags) then
+    if im.Begin("Hot_Times##HotlappingMainWindow", nil, flags) then
+        im.SetWindowFontScale(getFontScale())
         if im.BeginTabBar("HotlappingTabs") then
             -- Tab 1: Timer
             if im.BeginTabItem("Times") then
@@ -145,39 +203,10 @@ function M.renderUI(dt)
     im.End()
 
 
-    -- Leaderboard window
-    -- if im.Begin("Hotlapping##HotlappingLeaderboard", nil, flags) then
-    --     -- Leaderboard content goes here
-    --     im.Text("Таблица лидеров:")
-    --     im.Separator()
-    --     -- Example leaderboard entries
-    --     -- for i = 1, 5 do
-    --         im.Text(string.format("Игрок %d: %d секунд", 1, 70))
-    --     -- end
-
-    --     -- Multiplayer status
-    --     if multiplayerManager and leaderboardManager then
-    --         local bestTimes = leaderboardManager.getBestTimes()
-    --         local index = 1
-    --         for playerName, data in pairs(bestTimes) do
-
-    --             -- log(string.format("[UI Manager] Leaderboard entry: %s - %d seconds (%s)", playerName, data.time, data.vehicle))
-    --             -- leaderboardData.bestTimes[playerName] = record
-    --             --   bestTimes[playerName] = { time = lapData.time, vehicle = lapData.vehicle }
-    --                im.Text("#"..index.." Игрок: " .. playerName .. " Время: " .. data.time .. " Транспорт: " .. data.vehicle)
-    --                index = index + 1
-    --         end
-    --         -- im.SameLine()
-    --         -- im.TextColored(im.ImVec4(mpColor[1], mpColor[2], mpColor[3], mpColor[4]),
-    --         --     mpMode == "multiplayer" and "Мультиплеер" or "Одиночная игра")
-    --     end
-
-    --     -- im.Separator()
-    -- end
-
 
     -- Leaderboard window
-    if im.Begin("Hotlapping Leaderboard(Server)##HotlappingLeaderboard", nil, flags) then
+    if im.Begin("Hot_Leaderboard(Server)##HotlappingLeaderboard", nil, flags) then
+        im.SetWindowFontScale(getFontScale())
         -- Tabs
         if im.BeginTabBar("LeaderboardTabs") then
             -- Tab 1: Best Times
@@ -198,11 +227,21 @@ function M.renderUI(dt)
         end
     end
     im.End()
+
+    -- resetUIStyles(im)
+    im.PopStyleColor(1)
+    if im.StyleVar_WindowBorderSize then
+        im.PopStyleVar(1)
+    end
+
+    if im.StyleVar_WindowShadowSize then
+        im.PopStyleVar(1)
+    end
 end
 
 function M.renderSettingsTab(im)
     -- Status section
-    im.Text("Статус:")
+    im.Text("Status:")
     im.SameLine()
     local color = getStatusColor()
     im.TextColored(im.ImVec4(color[1], color[2], color[3], color[4]), getStatusText())
@@ -211,15 +250,56 @@ function M.renderSettingsTab(im)
     if multiplayerManager then
         local mpMode = multiplayerManager.getOperationMode()
         local mpColor = mpMode == "multiplayer" and { 0, 1, 0, 1 } or { 0.7, 0.7, 0.7, 1 }
-        im.Text("Режим:")
+        im.Text("Mode:")
         im.SameLine()
         im.TextColored(im.ImVec4(mpColor[1], mpColor[2], mpColor[3], mpColor[4]),
-            mpMode == "multiplayer" and "Мультиплеер" or "Одиночная игра")
+            mpMode == "multiplayer" and "Multiplayer" or "Singleplayer")
     end
 
     im.Separator()
 
-    M.renderControlButtons(im)
+    -- if im.BeginChild1("Start/Finish Line Controls") then
+    --     im.Indent(10)
+
+        M.renderControlButtons(im)
+
+    --     im.Unindent(10)
+    -- end
+
+
+    -- if im.BeginChild1("UI Settings") then
+    --     im.Indent(10) -- Отступ для визуальной вложенности
+        im.Separator()
+
+        im.Text("UI Settings:")
+
+        -- Background opacity
+        im.Text("Background opacity:")
+        local opacityPtr = im.IntPtr(uiSettings.backgroundOpacity)
+        if im.SliderInt("##opacity", opacityPtr, 0, 100, "%d%%") then
+            uiSettings.backgroundOpacity = opacityPtr[0]
+            -- Сохраняем изменения
+            if storageManager then
+                storageManager.saveUISettings(uiSettings)
+            end
+            log("Background opacity changed to: " .. uiSettings.backgroundOpacity)
+        end
+
+        -- Font size
+        im.Text("Font size:")
+        local fontSizePtr = im.IntPtr(uiSettings.fontSize)
+        if im.SliderInt("##fontSize", fontSizePtr, 1, 3,
+                uiSettings.fontSize == 1 and "Small" or
+                (uiSettings.fontSize == 2 and "Medium" or "Large")) then
+            uiSettings.fontSize = fontSizePtr[0]
+            -- Сохраняем изменения
+            if storageManager then
+                storageManager.saveUISettings(uiSettings)
+            end
+            log("Font size changed to: " .. uiSettings.fontSize)
+        end
+    --     im.Unindent(10)
+    -- end
 end
 
 function M.renderTimerTab(im)
@@ -482,18 +562,23 @@ function M.renderLapHistorySection(im)
         end
 
         -- Clear history button
-        if im.Button("Clear history", im.ImVec2(200, 25)) then
-            if lapTimer.clearHistory then
-                lapTimer.clearHistory()
-                log("Lap history cleared by user")
+        -- if im.BeginChild1("Clear buttons") then
+        --     im.Indent(10)
+
+            if im.Button("Clear history", im.ImVec2(200, 25)) then
+                if lapTimer.clearHistory then
+                    lapTimer.clearHistory()
+                    log("Lap history cleared by user")
+                end
             end
-        end
-           if im.Button("Clear my Leaderboard times", im.ImVec2(200, 25)) then
-            if multiplayerManager then
-                multiplayerManager.clearMyLeaderboardTimes()
-                log("Leaderboard user times cleared by user")
+            if im.Button("Clear my Leaderboard times", im.ImVec2(200, 25)) then
+                if multiplayerManager then
+                    multiplayerManager.clearMyLeaderboardTimes()
+                    log("Leaderboard user times cleared by user")
+                end
             end
-        end
+        --     im.Unindent(10)
+        -- end
     end
 end
 
@@ -503,6 +588,16 @@ function M.setDependencies(deps)
     lapTimer = deps.lapTimer
     multiplayerManager = deps.multiplayerManager
     leaderboardManager = deps.leaderboardManager
+    storageManager = deps.storageManager
+
+    -- Загружаем UI настройки при инициализации
+    if storageManager then
+        local loadedSettings = storageManager.loadUISettings()
+        if loadedSettings then
+            uiSettings = loadedSettings
+            log("UI settings loaded from storage")
+        end
+    end
 end
 
 function M.setCallbacks(callbacks)
